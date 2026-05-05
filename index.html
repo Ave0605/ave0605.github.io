@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal del Empleado</title>
+    <style>
+        :root {
+            --blue-primary: #1d4ed8;
+            --blue-light: #eff6ff;
+            --orange-light: #fff7ed;
+            --text-main: #1f2937;
+            --text-gray: #6b7280;
+            --bg-body: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            color: var(--text-main);
+        }
+
+        /* Contenedor tipo móvil */
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: white;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 90px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        /* Cabecera Azul */
+        .header {
+            background-color: var(--blue-primary);
+            color: white;
+            padding: 40px 24px 70px 24px;
+            border-bottom-left-radius: 35px;
+            border-bottom-right-radius: 35px;
+            position: relative;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .header h1 {
+            font-size: 1.4rem;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .header .welcome {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin: 15px 0 5px 0;
+        }
+
+        .header .user-name {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .user-icon {
+            background: rgba(255, 255, 255, 0.2);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        /* Tarjeta Principal de Acumulado */
+        .main-card {
+            background: white;
+            margin: -45px 24px 20px 24px;
+            border-radius: 25px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            border: 1px solid #f1f5f9;
+        }
+
+        .status-badge {
+            float: right;
+            background: #dcfce7;
+            color: #166534;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 12px;
+            text-transform: uppercase;
+        }
+
+        .label-small {
+            font-size: 0.75rem;
+            color: var(--text-gray);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .total-amount {
+            font-size: 2.8rem;
+            font-weight: 900;
+            margin: 15px 0 5px 0;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .total-amount span {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .helper-text {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-style: italic;
+            margin-bottom: 20px;
+        }
+
+        /* Barra de Progreso */
+        .progress-section {
+            margin-top: 10px;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-bg {
+            height: 12px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--blue-primary);
+            width: 0%;
+            transition: width 1s ease-out;
+        }
+
+        /* Grid de Sub-tarjetas */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 0 24px;
+        }
+
+        .stat-card {
+            padding: 16px;
+            border-radius: 20px;
+            border: 1px solid transparent;
+        }
+
+        .stat-card.blue {
+            background-color: var(--blue-light);
+            border-color: #dbeafe;
+        }
+
+        .stat-card.orange {
+            background-color: var(--orange-light);
+            border-color: #ffedd5;
+        }
+
+        .stat-icon {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+
+        /* Lista de Registros */
+        .history-section {
+            padding: 24px;
+        }
+
+        .history-section h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .record-item {
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 10px;
+            border: 1px solid #f1f5f9;
+        }
+
+        .record-icon {
+            width: 44px;
+            height: 44px;
+            background: #f8fafc;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 14px;
+            font-size: 1.2rem;
+        }
+
+        .record-info {
+            flex-grow: 1;
+        }
+
+        .record-date {
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .record-sub {
+            font-size: 0.75rem;
+            color: var(--text-gray);
+            margin-top: 2px;
+        }
+
+        .record-monto {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        /* Navegación Inferior */
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0 25px 0;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 0.65rem;
+            font-weight: 700;
+        }
+
+        .nav-item.active {
+            color: var(--blue-primary);
+        }
+
+        .nav-item i {
+            font-size: 1.3rem;
+        }
+
+        /* Loading Overlay */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--blue-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; color: #64748b; font-weight: 600;">Sincronizando con Sheet...</p>
+    </div>
+
+    <div class="app-container">
+        <div class="header">
+            <div class="header-top">
+                <h1>Portal del Empleado</h1>
+                <div class="user-icon">👤</div>
+            </div>
+            <p class="welcome">Bienvenido de vuelta,</p>
+            <p class="user-name" id="ui-nombre">---</p>
+        </div>
+
+        <div class="main-card">
+            <span class="status-badge">Activo</span>
+            <div class="label-small">Acumulado al día</div>
+            <div class="total-amount" id="ui-acumulado">0 <span>GS.</span></div>
+            <p class="helper-text">Corte automático cada 6 días trabajados.</p>
+
+            <div class="progress-section">
+                <div class="progress-labels">
+                    <span>Progreso del Ciclo</span>
+                    <span id="ui-progreso-texto">0 de 6 Días</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="ui-barra"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="stat-icon">📅</div>
+                <div class="stat-label" style="color: #1e40af;">JORNALES</div>
+                <div class="stat-value" id="ui-jornales" style="color: #1e3a8a;">0 Gs.</div>
+            </div>
+            <div class="stat-card orange">
+                <div class="stat-icon">🕒</div>
+                <div class="stat-label" style="color: #9a3412;">EXTRAS</div>
+                <div class="stat-value" id="ui-extras" style="color: #7c2d12;">0 Gs.</div>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h3>Últimos Registros</h3>
+            <div id="ui-lista">
+                </div>
+        </div>
+
+        <nav class="nav-bar">
+            <a href="#" class="nav-item active">
+                <span>🏠</span>
+                <span>Inicio</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span>📊</span>
+                <span>Historial</span>
+            </a>
+            <a href="#" class="nav-item">
+                <span>⚙️</span>
+                <span>Perfil</span>
+            </a>    
+        </nav>
+    </div>
+
+   <script>
+    // PEGA AQUÍ LA URL QUE TE DIO GOOGLE AL IMPLEMENTAR
+    const nombrePlayero = "Juan_Perez";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyFJyHHcLPlRyCoUt9Hz2JBWcW_p90NEVZdE0KAo5UmgL91IQ4gQAbGxFD68XxoUBB9/exec";
+const urlConParametros = `${WEB_APP_URL}?nombre=${encodeURIComponent(nombrePlayero)}`;
+    window.onload = function() {
+        fetchData();
+    };
+
+    function fetchData() {
+        // Usamos fetch para pedir los datos a la URL de Google
+        fetch(urlConParametros)
+            .then(response => response.json())
+            .then(data => {
+                renderData(data);
+            })
+            .catch(err => {
+                console.error("Error:", err);
+                alert("No se pudieron cargar los datos. Revisa tu conexión.");
+            });
+    }
+    const hoy = new Date();
+    const diaSemana = hoy.getDay();
+
+    /*
+    function renderData(data) {
+    
+    let progresoVisual = data.progreso;
+let Hdiurno = 0;
+let Hnocturno = 0;
+let Hextradiurno = 0;
+let Hextranocturno = 0;
+let Hdescanso = 0;
+
+let Mdiurno = 0;
+let Mnocturno = 0;
+let Mextradiurno = 0;
+let Mextranocturno = 0;
+let Mdescanso = 0;
+
+let total = 0;
+let jornales = 0;
+let extras = 0;
+    if (diaSemana === 4) {
+        progresoVisual = 6;
+    }
+        console.log(data)
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('ui-nombre').innerText = data.nombre;
+       
+        
+const porcentaje = Math.min((progresoVisual / 6) * 100, 100);
+       const barra = document.getElementById('ui-barra');
+    const textoProgreso = document.getElementById('ui-progreso-texto');
+
+    if (barra) barra.style.width = `${porcentaje}%`;
+    if (textoProgreso) textoProgreso.innerText = `${progresoVisual} de 6 Días`;
+
+let totalMinDiurnos = 0;
+let totalMinNocturnos = 0;
+
+        let listaHTML = '';
+        data.registros.forEach(reg => {
+           // Usamos reg.horaInicio y reg.horaFin (o los nombres que definiste en el mapeo)
+    if (reg.horaInicio && reg.horaCierre) {
+        
+        const [h1, m1] = reg.horaInicio.split(':').map(Number);
+        const [h2, m2] = reg.horaCierre.split(':').map(Number);
+        
+        let inicio = h1 * 60 + m1;
+        let fin = h2 * 60 + m2;
+
+        // Gestión de cruce de medianoche (Ej: Entra 22:00, sale 06:00)
+        if (fin < inicio) {
+            fin += 24 * 60;
+        }
+
+        // Definición de franjas según tu requerimiento
+        const LIMITE_DIURNO_INICIO = 6 * 60;  // 06:00
+        const LIMITE_DIURNO_FIN = 20 * 60;    // 20:00
+
+        // BARRIDO DE MINUTOS: Aquí ocurre la "diferenciación" automática
+        for (let m = inicio; m < fin; m++) {
+            let minutoDelDia = m % (24 * 60); 
+            
+            if (minutoDelDia >= LIMITE_DIURNO_INICIO && minutoDelDia < LIMITE_DIURNO_FIN) {
+                totalMinDiurnos++; // Se suma al bloque diurno
+            } else {
+                totalMinNocturnos++; // Se suma al bloque nocturno (00:00-06:00 o 20:00-24:00)
+            }
+        }}
+            const esDescanso = reg.estado.toLowerCase().includes('descanso');
+            listaHTML += `
+                <div class="record-item">
+                    <div class="record-icon">${esDescanso ? '😴' : '✅'}</div>
+                    <div class="record-info">
+                        <div class="record-date">${reg.fecha}</div>
+                        <div class="record-sub">${reg.estado} - ${reg.hora}</div>
+                    </div>
+                    <div class="record-monto" style="color: ${esDescanso ? '#94a3b8' : '#10b981'}">
+                        ${reg.valor} pts
+                    </div>
+                </div>`;
+        });
+
+        Hdiurno = (totalMinDiurnos / 60).toFixed(2);
+        Hnocturno = (totalMinNocturnos / 60).toFixed(2);
+
+        Mdiurno = Hdiurno * 12886;
+        Mnocturno = Hnocturno * 19145;
+
+        jornales = Mdiurno + Mnocturno
+        extras = Mextradiurno + Mextranocturno + Mdescanso
+        total = Mdiurno + Mnocturno + Mextradiurno + Mextranocturno + Mdescanso
+
+        console.log(Hdiurno);
+         document.getElementById('ui-acumulado').innerHTML = `${Number(total).toLocaleString('de-DE')} <span>GS.</span>`;
+        document.getElementById('ui-jornales').innerText = `${Number(jornales).toLocaleString('de-DE')} Gs.`;
+        document.getElementById('ui-extras').innerText = `${Number(extras).toLocaleString('de-DE')} Gs.`;
+        document.getElementById('ui-lista').innerHTML = listaHTML;
+    }*/
+
+
+
+    function renderData(data) {
+        console.log(data)
+    let progresoVisual = data.progreso;
+    let Hdiurno = 0, Hnocturno = 0;
+    let Hextradiurno = 0, Hextranocturno = 0;
+    let Hdescanso = 0;
+
+    let Mdiurno = 0, Mnocturno = 0;
+    let Mextradiurno = 0, Mextranocturno = 0;
+    let Mdescanso = 0;
+
+    let total = 0, jornales = 0, extras = 0;
+
+    if (diaSemana === 4) { progresoVisual = 6; }
+
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('ui-nombre').innerText = data.nombre;
+
+    const porcentaje = Math.min((progresoVisual / 6) * 100, 100);
+    const barra = document.getElementById('ui-barra');
+    const textoProgreso = document.getElementById('ui-progreso-texto');
+
+    if (barra) barra.style.width = `${porcentaje}%`;
+    if (textoProgreso) textoProgreso.innerText = `${progresoVisual} de 6 Días`;
+
+    // Acumuladores de minutos
+    let minNormalesTotales = 0;
+    let minExtraDiurnosTotales = 0;
+    let minExtraNocturnosTotales = 0;
+
+    let listaHTML = '';
+
+    data.registros.forEach(reg => {
+        if (reg.horaInicio && reg.horaCierre) {
+            // 1. Normalización de Tiempos
+            const [h1, m1] = reg.horaInicio.split(':').map(Number);
+            const [h2, m2] = reg.horaCierre.split(':').map(Number);
+            let inicio = h1 * 60 + m1;
+            let fin = h2 * 60 + m2;
+            if (fin < inicio) fin += 1440;
+
+            const tiempoTotal = fin - inicio;
+
+            // 2. Definición de Moldes (Turnos y Legal)
+            const TURNOS = {
+                'mañana': { inicio: 330, fin: 780 }, // 05:30 - 13:00
+                'tarde':  { inicio: 780, fin: 1230 } // 13:00 - 20:30
+            };
+            const LEGAL = { inicio: 360, fin: 1200 }; // 06:00 - 20:00
+
+            // Obtenemos el molde según la bandera (por defecto mañana si no existe)
+            const bandera = (reg.turno || 'mañana').toLowerCase();
+            const turno = TURNOS[bandera];
+
+         // 3. CÁLCULO LÓGICO (Comparación Directa Corregida)
+// Horas Normales (dentro del turno)
+const minNormales = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
+
+// Tramos Extras (limitados al tiempo real de trabajo para evitar el error de los 344 min)
+const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
+const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
+
+// Clasificación de Extras (Tijera Legal: 06:00 a 20:00)
+// Extra Antes Diurna: desde que entró hasta que empezó el turno (o se fue), dentro del horario legal
+const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
+const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
+
+// Extra Después Diurna: desde que terminó el turno (o entró) hasta que salió, dentro del horario legal
+const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
+const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
+
+            // 4. ACUMULACIÓN
+            minNormalesTotales += minNormales;
+            minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
+            minExtraNocturnosTotales += (extraAntesNocturna + extraDespuesNocturna);
+        }
+
+        // Renderizado de la lista (se mantiene tu estilo)
+        const esDescanso = reg.estado.toLowerCase().includes('descanso');
+        listaHTML += `
+            <div class="record-item">
+                <div class="record-icon">${esDescanso ? '😴' : '✅'}</div>
+                <div class="record-info">
+                    <div class="record-date">${reg.fecha}</div>
+                    <div class="record-sub">${reg.estado} - ${reg.horaInicio} a ${reg.horaCierre}</div>
+                </div>
+                <div class="record-monto" style="color: ${esDescanso ? '#94a3b8' : '#10b981'}">
+                    ${reg.valor || 0} pts
+                </div>
+            </div>`;
+    });
+
+    // 5. CONVERSIÓN Y CÁLCULO MONETARIO
+    // Asumimos que "Jornales" es lo normal y "Extras" es la suma de extra diurna/nocturna
+    Hdiurno = (minNormalesTotales / 60); // Horas del turno normal
+    Hextradiurno = (minExtraDiurnosTotales / 60);
+    Hextranocturno = (minExtraNocturnosTotales / 60);
+
+    // Cálculos monetarios según tus valores
+    Mdiurno = Hdiurno * 12886; 
+    Mextradiurno = Hextradiurno * 16751; // O el valor que asignes a extras
+    Mextranocturno = Hextranocturno * 19145;
+
+    jornales = Mdiurno;
+    extras = Mextradiurno + Mextranocturno;
+    total = jornales + extras;
+// --- LOGS DETALLADOS DE CÁLCULOS ---
+
+console.log("=== DESGLOSE DE TIEMPOS Y PAGOS ===");
+
+// 1. Horas Diurnas (Normales)
+console.log(`[DIURNO NORMAL] 
+   - Minutos: ${minNormalesTotales} min
+   - Horas calc: ${Hdiurno.toFixed(2)} hrs
+   - Monto: $${Mdiurno.toLocaleString()}`);
+
+// 2. Horas Extras Diurnas
+console.log(`[EXTRA DIURNA] 
+   - Minutos: ${minExtraDiurnosTotales} min
+   - Horas calc: ${Hextradiurno.toFixed(2)} hrs
+   - Monto: $${Mextradiurno.toLocaleString()}`);
+
+// 3. Horas Extras Nocturnas
+console.log(`[EXTRA NOCTURNA] 
+   - Minutos: ${minExtraNocturnosTotales} min
+   - Horas calc: ${Hextranocturno.toFixed(2)} hrs
+   - Monto: $${Mextranocturno.toLocaleString()}`);
+
+console.log("-----------------------------------");
+
+// 4. Totales Finales
+console.log(`[RESUMEN FINAL]
+   - Jornales: $${jornales.toLocaleString()}
+   - Extras:   $${extras.toLocaleString()}
+   - TOTAL:    $${total.toLocaleString()}`);
+
+console.log("===================================");
+
+    
+    // 6. RENDERIZADO EN UI
+    document.getElementById('ui-acumulado').innerHTML = `${Math.round(total).toLocaleString('de-DE')} <span>GS.</span>`;
+    document.getElementById('ui-jornales').innerText = `${Math.round(jornales).toLocaleString('de-DE')} Gs.`;
+    document.getElementById('ui-extras').innerText = `${Math.round(extras).toLocaleString('de-DE')} Gs.`;
+    document.getElementById('ui-lista').innerHTML = listaHTML;
+}
+
+
+</script>
+</body>
+</html>
