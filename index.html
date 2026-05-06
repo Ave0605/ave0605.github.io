@@ -314,6 +314,29 @@
     </style>
 </head>
 <body>
+<div id="modal-inicio" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 2000;">
+    <div style="background: white; width: 90%; max-width: 400px; padding: 30px; border-radius: 28px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 15px;">⛽</div>
+        <h2 style="margin: 0 0 10px 0; color: #1e293b;">Acceso Personal</h2>
+        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 25px;">Selecciona tu usuario e ingresa tu clave personal.</p>
+        
+        <select id="input-nombre" 
+            style="width: 100%; padding: 14px 20px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; outline: none; margin-bottom: 15px; background-color: white;">
+            <option value="" disabled selected>Selecciona tu nombre...</option>
+            <option value="pedro_franco">Pedro Franco</option>
+            <option value="hector_vera">Hector Vera</option>
+            <option value="roberto_vazquez">Roberto Vazquez</option>
+        </select>
+
+        <input type="password" id="input-pass" placeholder="Tu contraseña" 
+            style="width: 100%; padding: 14px 20px; border: 2px solid #e2e8f0; border-radius: 14px; font-size: 1rem; outline: none; margin-bottom: 20px;">
+        
+        <button onclick="iniciarSesion()" 
+            style="width: 100%; background: #1d4ed8; color: white; border: none; padding: 14px; border-radius: 14px; font-weight: 700; font-size: 1rem; cursor: pointer;">
+            Entrar al Portal
+        </button>
+    </div>
+</div>
 
     <div id="loader">
         <div class="spinner"></div>
@@ -384,24 +407,67 @@
 
    <script>
     // PEGA AQUÍ LA URL QUE TE DIO GOOGLE AL IMPLEMENTAR
-    const nombrePlayero = "Juan_Perez";
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyFJyHHcLPlRyCoUt9Hz2JBWcW_p90NEVZdE0KAo5UmgL91IQ4gQAbGxFD68XxoUBB9/exec";
+    let nombrePlayero = "";
+  
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbysdj6tA5SqCI-RSWUuIUMGwYsZRj03pg3VtBZZTMkXfIHvwwM6Z8l50SGVw9e1O8O7/exec";
 const urlConParametros = `${WEB_APP_URL}?nombre=${encodeURIComponent(nombrePlayero)}`;
-    window.onload = function() {
+window.onload = function() {
+    // El loader se queda oculto hasta que se inicie sesión
+    document.getElementById('loader').style.display = 'none';
+};
+
+const CREDENCIALES = {
+    "pedro_franco": "pf2026",
+    "hector_vera": "hv2026",
+    "roberto_vazquez": "rv2026"
+};
+
+function iniciarSesion() {
+    const combo = document.getElementById('input-nombre');
+    const passInput = document.getElementById('input-pass');
+    
+    const usuario = combo.value;
+    const passwordIngresada = passInput.value;
+
+    // 1. Validar selección
+    if (!usuario) {
+        alert("Selecciona un playero.");
+        return;
+    }
+
+    // 2. Validar Contraseña Individual
+    // Buscamos si la contraseña ingresada coincide con la del usuario en el diccionario
+    if (CREDENCIALES[usuario] && passwordIngresada === CREDENCIALES[usuario]) {
+        // ÉXITO
+        nombrePlayero = usuario;
+        document.getElementById('modal-inicio').style.display = 'none';
+        document.getElementById('loader').style.display = 'flex';
         fetchData();
-    };
+    } else {
+        // ERROR
+        alert("Contraseña incorrecta para " + usuario.replace('_', ' '));
+        passInput.value = "";
+        passInput.focus();
+    }
+}
 
     function fetchData() {
         // Usamos fetch para pedir los datos a la URL de Google
-        fetch(urlConParametros)
-            .then(response => response.json())
-            .then(data => {
-                renderData(data);
-            })
-            .catch(err => {
-                console.error("Error:", err);
-                alert("No se pudieron cargar los datos. Revisa tu conexión.");
-            });
+     // Construimos la URL con el nombre ingresado en el modal
+    const urlConParametros = `${WEB_APP_URL}?nombre=${encodeURIComponent(nombrePlayero)}`;
+    
+    fetch(urlConParametros)
+        .then(response => response.json())
+        .then(data => {
+            renderData(data);
+        })
+        .catch(err => {
+            console.error("Error:", err);
+            alert("No se pudieron cargar los datos de " + nombrePlayero);
+            // Si falla, volvemos a mostrar el modal
+            document.getElementById('modal-inicio').style.display = 'flex';
+            document.getElementById('loader').style.display = 'none';
+        });
     }
     const hoy = new Date();
     const diaSemana = hoy.getDay();
@@ -506,41 +572,24 @@ let totalMinNocturnos = 0;
 
 
 
-    function renderData(data) {
-        console.log(data)
+ function renderData(data) {
+    console.log(data);
     let progresoVisual = data.progreso;
-    let Hdiurno = 0, Hnocturno = 0;
-    let Hextradiurno = 0, Hextranocturno = 0;
-    let Hdescanso = 0;
-
-    let Mdiurno = 0, Mnocturno = 0;
-    let Mextradiurno = 0, Mextranocturno = 0;
-    let Mdescanso = 0;
-
-    let total = 0, jornales = 0, extras = 0;
-
     if (diaSemana === 4) { progresoVisual = 6; }
 
     document.getElementById('loader').style.display = 'none';
     document.getElementById('ui-nombre').innerText = data.nombre;
 
-    const porcentaje = Math.min((progresoVisual / 6) * 100, 100);
-    const barra = document.getElementById('ui-barra');
-    const textoProgreso = document.getElementById('ui-progreso-texto');
-
-    if (barra) barra.style.width = `${porcentaje}%`;
-    if (textoProgreso) textoProgreso.innerText = `${progresoVisual} de 6 Días`;
-
     // Acumuladores de minutos
-    let minNormalesTotales = 0;
+    let minNormalDiurnoTotales = 0;
+    let minNormalNocturnoTotales = 0; // NUEVO: Para el recargo nocturno en turno normal
     let minExtraDiurnosTotales = 0;
     let minExtraNocturnosTotales = 0;
-
+    let minDescansoTotales = 0;
     let listaHTML = '';
 
     data.registros.forEach(reg => {
         if (reg.horaInicio && reg.horaCierre) {
-            // 1. Normalización de Tiempos
             const [h1, m1] = reg.horaInicio.split(':').map(Number);
             const [h2, m2] = reg.horaCierre.split(':').map(Number);
             let inicio = h1 * 60 + m1;
@@ -548,42 +597,47 @@ let totalMinNocturnos = 0;
             if (fin < inicio) fin += 1440;
 
             const tiempoTotal = fin - inicio;
+            const tipoDia = (reg.tipo_dia || "").trim().toUpperCase();
 
-            // 2. Definición de Moldes (Turnos y Legal)
-            const TURNOS = {
-                'mañana': { inicio: 330, fin: 780 }, // 05:30 - 13:00
-                'tarde':  { inicio: 780, fin: 1230 } // 13:00 - 20:30
-            };
-            const LEGAL = { inicio: 360, fin: 1200 }; // 06:00 - 20:00
+            if (tipoDia === "JUEVES_LIBRE_EXTRA") {
+                minDescansoTotales += tiempoTotal;
+            } else {
+                const TURNOS = {
+                    'mañana': { inicio: 330, fin: 780 }, // 05:30 - 13:00
+                    'tarde':  { inicio: 780, fin: 1230 } // 13:00 - 20:30
+                };
+                const LEGAL = { inicio: 360, fin: 1200 }; // 06:00 - 20:00
 
-            // Obtenemos el molde según la bandera (por defecto mañana si no existe)
-            const bandera = (reg.turno || 'mañana').toLowerCase();
-            const turno = TURNOS[bandera];
+                const bandera = (reg.turno || 'mañana').toLowerCase();
+                const turno = TURNOS[bandera];
 
-         // 3. CÁLCULO LÓGICO (Comparación Directa Corregida)
-// Horas Normales (dentro del turno)
-const minNormales = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
+                // --- HORAS NORMALES (Dentro del turno) ---
+                const minNormales = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
+                
+                // Dividimos los normales en Diurnos y Nocturnos
+                // Normal Diurno: entre inicio de turno y fin de turno, pero topado por LEGAL.fin (20:00)
+                const normalDiurno = Math.max(0, Math.min(fin, turno.fin, LEGAL.fin) - Math.max(inicio, turno.inicio, LEGAL.inicio));
+                const normalNocturno = Math.max(0, minNormales - normalDiurno);
 
-// Tramos Extras (limitados al tiempo real de trabajo para evitar el error de los 344 min)
-const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
-const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
+                // --- HORAS EXTRAS (Fuera del turno) ---
+                const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
+                const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
 
-// Clasificación de Extras (Tijera Legal: 06:00 a 20:00)
-// Extra Antes Diurna: desde que entró hasta que empezó el turno (o se fue), dentro del horario legal
-const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
-const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
+                const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
+                const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
 
-// Extra Después Diurna: desde que terminó el turno (o entró) hasta que salió, dentro del horario legal
-const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
-const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
+                const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
+                const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
 
-            // 4. ACUMULACIÓN
-            minNormalesTotales += minNormales;
-            minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
-            minExtraNocturnosTotales += (extraAntesNocturna + extraDespuesNocturna);
+                // ACUMULACIÓN
+                minNormalDiurnoTotales += normalDiurno;
+                minNormalNocturnoTotales += normalNocturno;
+                minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
+                minExtraNocturnosTotales += (extraAntesNocturna + extraDespuesNocturna);
+            }
         }
 
-        // Renderizado de la lista (se mantiene tu estilo)
+        // Renderizado de lista (se mantiene igual)
         const esDescanso = reg.estado.toLowerCase().includes('descanso');
         listaHTML += `
             <div class="record-item">
@@ -598,54 +652,29 @@ const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
             </div>`;
     });
 
-    // 5. CONVERSIÓN Y CÁLCULO MONETARIO
-    // Asumimos que "Jornales" es lo normal y "Extras" es la suma de extra diurna/nocturna
-    Hdiurno = (minNormalesTotales / 60); // Horas del turno normal
-    Hextradiurno = (minExtraDiurnosTotales / 60);
-    Hextranocturno = (minExtraNocturnosTotales / 60);
+    // --- CONVERSIÓN A HORAS Y MONTOS ---
+    let HnormalDiurno = minNormalDiurnoTotales / 60;
+    let HnormalNocturno = minNormalNocturnoTotales / 60;
+    let HextraDiurno = minExtraDiurnosTotales / 60;
+    let HextraNocturno = minExtraNocturnosTotales / 60;
+    let Hdescanso = minDescansoTotales / 60;
 
-    // Cálculos monetarios según tus valores
-    Mdiurno = Hdiurno * 12886; 
-    Mextradiurno = Hextradiurno * 16751; // O el valor que asignes a extras
-    Mextranocturno = Hextranocturno * 19145;
+    // Precios (Ajustar según necesidad)
+    let MnormalDiurno = HnormalDiurno * 12242;
+    let MnormalNocturno = HnormalNocturno * 15915; // Tarifa nocturna normal
+    let MextraDiurno = HextraDiurno * 18364;
+    let MextraNocturno = HextraNocturno * 25000; 
+    let Mdescanso = Hdescanso * 25000;
 
-    jornales = Mdiurno;
-    extras = Mextradiurno + Mextranocturno;
-    total = jornales + extras;
-// --- LOGS DETALLADOS DE CÁLCULOS ---
+    let jornales = MnormalDiurno + MnormalNocturno;
+    let extras = MextraDiurno + MextraNocturno + Mdescanso;
+    let total = jornales + extras;
 
-console.log("=== DESGLOSE DE TIEMPOS Y PAGOS ===");
+    // Logs para debug
+    console.log(`Normal Diurno: ${HnormalDiurno.toFixed(2)} hrs - Gs. ${MnormalDiurno.toLocaleString()}`);
+    console.log(`Normal Nocturno: ${HnormalNocturno.toFixed(2)} hrs - Gs. ${MnormalNocturno.toLocaleString()}`);
 
-// 1. Horas Diurnas (Normales)
-console.log(`[DIURNO NORMAL] 
-   - Minutos: ${minNormalesTotales} min
-   - Horas calc: ${Hdiurno.toFixed(2)} hrs
-   - Monto: $${Mdiurno.toLocaleString()}`);
-
-// 2. Horas Extras Diurnas
-console.log(`[EXTRA DIURNA] 
-   - Minutos: ${minExtraDiurnosTotales} min
-   - Horas calc: ${Hextradiurno.toFixed(2)} hrs
-   - Monto: $${Mextradiurno.toLocaleString()}`);
-
-// 3. Horas Extras Nocturnas
-console.log(`[EXTRA NOCTURNA] 
-   - Minutos: ${minExtraNocturnosTotales} min
-   - Horas calc: ${Hextranocturno.toFixed(2)} hrs
-   - Monto: $${Mextranocturno.toLocaleString()}`);
-
-console.log("-----------------------------------");
-
-// 4. Totales Finales
-console.log(`[RESUMEN FINAL]
-   - Jornales: $${jornales.toLocaleString()}
-   - Extras:   $${extras.toLocaleString()}
-   - TOTAL:    $${total.toLocaleString()}`);
-
-console.log("===================================");
-
-    
-    // 6. RENDERIZADO EN UI
+    // Renderizado en UI
     document.getElementById('ui-acumulado').innerHTML = `${Math.round(total).toLocaleString('de-DE')} <span>GS.</span>`;
     document.getElementById('ui-jornales').innerText = `${Math.round(jornales).toLocaleString('de-DE')} Gs.`;
     document.getElementById('ui-extras').innerText = `${Math.round(extras).toLocaleString('de-DE')} Gs.`;
