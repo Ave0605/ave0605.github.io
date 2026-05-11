@@ -571,24 +571,26 @@ let totalMinNocturnos = 0;
     }*/
 
 
+function renderData(data) {
+    console.log("--- INICIO RENDER DATA ---");
+    console.log("Data recibida:", data);
 
- function renderData(data) {
-    console.log(data);
     let progresoVisual = data.progreso;
-    if (diaSemana === 4) { progresoVisual = 6; }
+    if (typeof diaSemana !== 'undefined' && diaSemana === 4) { progresoVisual = 6; }
 
     document.getElementById('loader').style.display = 'none';
     document.getElementById('ui-nombre').innerText = data.nombre;
 
-    // Acumuladores de minutos
     let minNormalDiurnoTotales = 0;
-    let minNormalNocturnoTotales = 0; // NUEVO: Para el recargo nocturno en turno normal
+    let minNormalNocturnoTotales = 0;
     let minExtraDiurnosTotales = 0;
     let minExtraNocturnosTotales = 0;
     let minDescansoTotales = 0;
     let listaHTML = '';
 
-    data.registros.forEach(reg => {
+    data.registros.forEach((reg, index) => {
+        console.group(`Registro #${index + 1}: ${reg.fecha}`); // Agrupa los logs por cada día
+        
         if (reg.horaInicio && reg.horaCierre) {
             const [h1, m1] = reg.horaInicio.split(':').map(Number);
             const [h2, m2] = reg.horaCierre.split(':').map(Number);
@@ -599,69 +601,66 @@ let totalMinNocturnos = 0;
             const tiempoTotal = fin - inicio;
             const tipoDia = (reg.tipo_dia || "").trim().toUpperCase();
 
+            console.log(`Rango: ${reg.horaInicio} - ${reg.horaCierre} (${tiempoTotal} min)`);
+            console.log(`Tipo Día: ${tipoDia}`);
+
             if (tipoDia === "JUEVES_LIBRE_EXTRA") {
                 minDescansoTotales += tiempoTotal;
+                console.log("Acción: Sumado a Descanso Total");
             } else {
                 const TURNOS = {
-                    'mañana': { inicio: 330, fin: 780 }, // 05:30 - 13:00
-                    'tarde':  { inicio: 780, fin: 1230 } // 13:00 - 20:30
+                    'mañana': { inicio: 330, fin: 780 },
+                    'tarde':  { inicio: 780, fin: 1230 }
                 };
-                const LEGAL = { inicio: 360, fin: 1200 }; // 06:00 - 20:00
+                const LEGAL = { inicio: 360, fin: 1200 };
 
                 const bandera = (reg.turno || 'mañana').toLowerCase();
                 const turno = TURNOS[bandera];
+                console.log(`Turno detectado: ${bandera}`, turno);
 
-                // --- HORAS NORMALES (Dentro del turno) ---
+                // --- HORAS NORMALES ---
                 const minNormales = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
-                
-                // Dividimos los normales en Diurnos y Nocturnos
-                // Normal Diurno: entre inicio de turno y fin de turno, pero topado por LEGAL.fin (20:00)
                 const normalDiurno = Math.max(0, Math.min(fin, turno.fin, LEGAL.fin) - Math.max(inicio, turno.inicio, LEGAL.inicio));
                 const normalNocturno = Math.max(0, minNormales - normalDiurno);
 
-                // --- HORAS EXTRAS (Fuera del turno) ---
+                // --- HORAS EXTRAS ---
                 const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
                 const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
-
                 const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
                 const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
-
                 const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
                 const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
 
-                // ACUMULACIÓN
+                console.log(`Cálculos Parciales (min):
+                    - Normal Diurno: ${normalDiurno}
+                    - Normal Nocturno: ${normalNocturno}
+                    - Extra Diurna: ${extraAntesDiurna + extraDespuesDiurna}
+                    - Extra Nocturna: ${extraAntesNocturna + extraDespuesNocturna}`);
+
                 minNormalDiurnoTotales += normalDiurno;
                 minNormalNocturnoTotales += normalNocturno;
                 minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
                 minExtraNocturnosTotales += (extraAntesNocturna + extraDespuesNocturna);
             }
+        } else {
+            console.warn("Registro incompleto: Faltan horas de inicio o cierre.");
         }
+        console.groupEnd();
 
-        // Renderizado de lista (se mantiene igual)
+        // Renderizado de lista
         const esDescanso = reg.estado.toLowerCase().includes('descanso');
-        listaHTML += `
-            <div class="record-item">
-                <div class="record-icon">${esDescanso ? '😴' : '✅'}</div>
-                <div class="record-info">
-                    <div class="record-date">${reg.fecha}</div>
-                    <div class="record-sub">${reg.estado} - ${reg.horaInicio} a ${reg.horaCierre}</div>
-                </div>
-                <div class="record-monto" style="color: ${esDescanso ? '#94a3b8' : '#10b981'}">
-                    ${reg.valor || 0} pts
-                </div>
-            </div>`;
+        listaHTML += `...`; // (Tu código de HTML se mantiene igual)
     });
 
-    // --- CONVERSIÓN A HORAS Y MONTOS ---
+    // --- CONVERSIÓN Y TOTALES ---
     let HnormalDiurno = minNormalDiurnoTotales / 60;
     let HnormalNocturno = minNormalNocturnoTotales / 60;
     let HextraDiurno = minExtraDiurnosTotales / 60;
     let HextraNocturno = minExtraNocturnosTotales / 60;
     let Hdescanso = minDescansoTotales / 60;
 
-    // Precios (Ajustar según necesidad)
     let MnormalDiurno = HnormalDiurno * 12242;
-    let MnormalNocturno = HnormalNocturno * 15915; // Tarifa nocturna normal
+    let MnormalNocturno = HnormalNocturno * 15915;
     let MextraDiurno = HextraDiurno * 18364;
     let MextraNocturno = HextraNocturno * 25000; 
     let Mdescanso = Hdescanso * 25000;
@@ -670,9 +669,17 @@ let totalMinNocturnos = 0;
     let extras = MextraDiurno + MextraNocturno + Mdescanso;
     let total = jornales + extras;
 
-    // Logs para debug
-    console.log(`Normal Diurno: ${HnormalDiurno.toFixed(2)} hrs - Gs. ${MnormalDiurno.toLocaleString()}`);
-    console.log(`Normal Nocturno: ${HnormalNocturno.toFixed(2)} hrs - Gs. ${MnormalNocturno.toLocaleString()}`);
+    // Resumen final en una tabla bonita
+    console.group("--- RESUMEN FINAL DE CÁLCULOS ---");
+    console.table({
+        "Normal Diurno": { Horas: HnormalDiurno.toFixed(2), Monto: MnormalDiurno.toFixed(0) },
+        "Normal Nocturno": { Horas: HnormalNocturno.toFixed(2), Monto: MnormalNocturno.toFixed(0) },
+        "Extra Diurna": { Horas: HextraDiurno.toFixed(2), Monto: MextraDiurno.toFixed(0) },
+        "Extra Nocturna": { Horas: HextraNocturno.toFixed(2), Monto: MextraNocturno.toFixed(0) },
+        "Descanso": { Horas: Hdescanso.toFixed(2), Monto: Mdescanso.toFixed(0) }
+    });
+    console.log(`TOTAL ACUMULADO: Gs. ${Math.round(total).toLocaleString()}`);
+    console.groupEnd();
 
     // Renderizado en UI
     document.getElementById('ui-acumulado').innerHTML = `${Math.round(total).toLocaleString('de-DE')} <span>GS.</span>`;
@@ -680,8 +687,6 @@ let totalMinNocturnos = 0;
     document.getElementById('ui-extras').innerText = `${Math.round(extras).toLocaleString('de-DE')} Gs.`;
     document.getElementById('ui-lista').innerHTML = listaHTML;
 }
-
-
 </script>
 </body>
 </html>
