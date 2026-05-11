@@ -648,8 +648,19 @@ function renderData(data) {
         console.groupEnd();
 
         // Renderizado de lista
+       // Renderizado de lista (se mantiene igual)
         const esDescanso = reg.estado.toLowerCase().includes('descanso');
-        listaHTML += `...`; // (Tu código de HTML se mantiene igual)
+        listaHTML += `
+            <div class="record-item">
+                <div class="record-icon">${esDescanso ? '😴' : '✅'}</div>
+                <div class="record-info">
+                    <div class="record-date">${reg.fecha}</div>
+                    <div class="record-sub">${reg.estado} - ${reg.horaInicio} a ${reg.horaCierre}</div>
+                </div>
+                <div class="record-monto" style="color: ${esDescanso ? '#94a3b8' : '#10b981'}">
+                    ${reg.valor || 0} pts
+                </div>
+            </div>`;
     });
 
     // --- CONVERSIÓN Y TOTALES ---
