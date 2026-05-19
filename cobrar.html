@@ -35,7 +35,6 @@
             background-color: rgba(52, 211, 153, 0.1); padding: 0.25rem 0.75rem; border-radius: 9999px;
         }
         
-        /* Contenedores de tablas */
         .table-container { width: 100%; overflow-x: auto; }
         .seccion-tabla2 { border-top: 2px solid #e2e8f0; background-color: #f8fafc; padding-top: 1.5rem; }
         .seccion-tabla2 h2 { font-size: 1.1rem; color: #1e293b; padding: 0 1.5rem 1rem 1.5rem; font-weight: 700; }
@@ -43,23 +42,21 @@
         table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
         th {
             background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;
-            font-weight: 700; text-transform: uppercase; font-size: 0.75rem; padding: 1rem 1.5rem;
+            font-weight: 700; text-transform: uppercase; font-size: 0.75rem; padding: 1rem 1.2rem;
         }
-        td { padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; }
+        td { padding: 1rem 1.2rem; border-bottom: 1px solid #f1f5f9; }
         
-        /* Estilos específicos Tabla 1 */
         .tabla-diaria tr:hover td { background-color: #f8fafc; }
         .tabla-diaria tr.row-vacia td { background-color: rgba(248, 250, 252, 0.5); color: #94a3b8; }
         
-        /* Estilos específicos Tabla 2 */
         .tabla-cobro th { background-color: #e2e8f0; color: #1e293b; }
         .tabla-cobro tr:hover td { background-color: #f1f5f9; }
         .fila-total-final { background-color: #e2e8f0; font-size: 0.95rem; color: #0f172a; }
 
-        /* Clases utilitarias */
         .text-right { text-align: right; }
         .font-mono { font-family: monospace; }
         .font-bold { font-weight: 700; }
+        .text-indigo { color: #4f46e5; }
         .text-amber { color: #d97706; }
         .text-emerald { color: #059669; }
         .badge { display: inline-flex; padding: 0.25rem 0.625rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; }
@@ -77,7 +74,6 @@
 </head>
 <body>
     <div class="container">
-        
         <div class="actions-bar no-print">
             <span>Previsualización del Reporte de Cobro</span>
             <button onclick="window.print()" class="btn-print">🖨️ Imprimir Reporte</button>
@@ -98,10 +94,11 @@
                         <tr>
                             <th>Fecha</th>
                             <th>Plazos Trabajados</th>
-                            <th class="text-right">H. Normales</th>
-                            <th class="text-right">Extras Diurnas</th>
-                            <th class="text-right">Extras Nocturnas</th>
-                            <th class="text-right">Descanso/Feriado</th>
+                            <th class="text-right">Norm. Diurnas</th>
+                            <th class="text-right">Norm. Nocturnas</th>
+                            <th class="text-right">Ext. Diurnas</th>
+                            <th class="text-right">Ext. Nocturnas</th>
+                            <th class="text-right">Desc./Feriado</th>
                             <th class="text-right">Total Día</th>
                         </tr>
                     </thead>
@@ -138,19 +135,20 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             // ==========================================
-            // CONFIGURACIÓN DE PRECIOS POR HORA
+            // CONFIGURACIÓN DE PRECIOS EXACTOS POR HORA
             // ==========================================
             const PRECIOS_HORA = {
-                normal: 12683,        
-                extraDiurna: 16487,   
-                extraNocturna: 19024, 
+                normalDiurna: 12683,
+                normalNocturna: 16487,
+                extraDiurna: 19024,   
+                extraNocturna: 25366, 
                 feriado: 25366        
             };
 
             const rawData = localStorage.getItem('reporteCobroData');
             
             if (!rawData) {
-                document.getElementById('tabla-cuerpo').innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">No se encontraron datos para procesar.</td></tr>`;
+                document.getElementById('tabla-cuerpo').innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;">No se encontraron datos para procesar.</td></tr>`;
                 document.getElementById('tabla-totales-cuerpo').innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1rem; color:#94a3b8;">Sin importes.</td></tr>`;
                 return;
             }
@@ -159,27 +157,26 @@
             let filasDiariasHTML = '';
 
             // Acumuladores globales para realizar los cálculos de la Tabla 2
-            let sumaNormales = 0;
+            let sumaNormalesDiurnas = 0;
+            let sumaNormalesNocturnas = 0;
             let sumaExtrasDiurnas = 0;
             let sumaExtrasNocturnas = 0;
             let sumaFeriados = 0;
-
-            console.log("Datos Cargados Correctamente en Reporte:", reporteAgrupado);
 
             // 1. PROCESAMIENTO Y RENDERIZADO DE TABLA 1 (Diaria)
             reporteAgrupado.forEach(row => {
                 const tieneHoras = row["Total Horas del Día"] > 0;
                 const claseFila = tieneHoras ? "" : "row-vacia";
 
-                // Mapeo seguro y numérico de los campos del objeto de datos
-                const hNormal = Number(row["Horas Ciclo Normal"] || 0);
+                const hNormDiurna = Number(row["Horas Normales Diurnas"] || 0);
+                const hNormNocturna = Number(row["Horas Normales Nocturnas"] || 0);
                 const hExDiurna = Number(row["Horas Extras Diurnas"] || 0); 
                 const hExNocturna = Number(row["Horas Extras Nocturnas"] || 0); 
                 const hFeriado = Number(row["Horas Descanso/Feriado"] || 0);
                 const totalDia = Number(row["Total Horas del Día"] || 0);
 
-                // Acumulamos las sumas globales
-                sumaNormales += hNormal;
+                sumaNormalesDiurnas += hNormDiurna;
+                sumaNormalesNocturnas += hNormNocturna;
                 sumaExtrasDiurnas += hExDiurna;
                 sumaExtrasNocturnas += hExNocturna;
                 sumaFeriados += hFeriado;
@@ -192,7 +189,8 @@
                                 ${row["Plazos Trabajados"] || 'Sin movimientos'}
                             </span>
                         </td>
-                        <td class="text-right font-mono">${hNormal > 0 ? hNormal.toFixed(2) : '-'}</td>
+                        <td class="text-right font-mono">${hNormDiurna > 0 ? hNormDiurna.toFixed(2) : '-'}</td>
+                        <td class="text-right font-mono style="font-style: italic;">${hNormNocturna > 0 ? hNormNocturna.toFixed(2) : '-'}</td>
                         <td class="text-right font-mono text-amber">${hExDiurna > 0 ? hExDiurna.toFixed(2) : '-'}</td>
                         <td class="text-right font-mono text-amber" style="font-style: italic;">${hExNocturna > 0 ? hExNocturna.toFixed(2) : '-'}</td>
                         <td class="text-right font-mono text-emerald">${hFeriado > 0 ? hFeriado.toFixed(2) : '-'}</td>
@@ -201,30 +199,34 @@
                 `;
             });
 
-            // Inyectar registros en la Tabla 1
             document.getElementById('tabla-cuerpo').innerHTML = filasDiariasHTML;
 
             // ==========================================
             // 2. CÁLCULO MATEMÁTICO Y RENDERIZADO DE TABLA 2
             // ==========================================
-            const impNormal = sumaNormales * PRECIOS_HORA.normal;
+            const impNormDiurna = sumaNormalesDiurnas * PRECIOS_HORA.normalDiurna;
+            const impNormNocturna = sumaNormalesNocturnas * PRECIOS_HORA.normalNocturna;
             const impExDiurna = sumaExtrasDiurnas * PRECIOS_HORA.extraDiurna;
             const impExNocturna = sumaExtrasNocturnas * PRECIOS_HORA.extraNocturna;
             const impFeriado = sumaFeriados * PRECIOS_HORA.feriado;
             
-            const granTotalMonetario = impNormal + impExDiurna + impExNocturna + impFeriado;
-            const granTotalHoras = sumaNormales + sumaExtrasDiurnas + sumaExtrasNocturnas + sumaFeriados;
+            const granTotalMonetario = impNormDiurna + impNormNocturna + impExDiurna + impExNocturna + impFeriado;
+            const granTotalHoras = sumaNormalesDiurnas + sumaNormalesNocturnas + sumaExtrasDiurnas + sumaExtrasNocturnas + sumaFeriados;
 
-            // Formateador monetario adaptado a estándares locales
             const formatoGs = new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', minimumFractionDigits: 0 });
 
-            // Inyectar cálculos e importes multiplicados en la Tabla 2 junto a la fila totalizadora
             document.getElementById('tabla-totales-cuerpo').innerHTML = `
                 <tr>
-                    <td>Horas Ciclo Normal</td>
-                    <td class="text-right font-mono">${sumaNormales.toFixed(2)}</td>
-                    <td class="text-right font-mono">${formatoGs.format(PRECIOS_HORA.normal)}</td>
-                    <td class="text-right font-mono font-bold">${formatoGs.format(impNormal)}</td>
+                    <td>Horas Normales Diurnas</td>
+                    <td class="text-right font-mono">${sumaNormalesDiurnas.toFixed(2)}</td>
+                    <td class="text-right font-mono">${formatoGs.format(PRECIOS_HORA.normalDiurna)}</td>
+                    <td class="text-right font-mono font-bold">${formatoGs.format(impNormDiurna)}</td>
+                </tr>
+                <tr>
+                    <td style="font-style: italic;">Horas Normales Nocturnas</td>
+                    <td class="text-right font-mono">${sumaNormalesNocturnas.toFixed(2)}</td>
+                    <td class="text-right font-mono">${formatoGs.format(PRECIOS_HORA.normalNocturna)}</td>
+                    <td class="text-right font-mono font-bold">${formatoGs.format(impNormNocturna)}</td>
                 </tr>
                 <tr>
                     <td class="text-amber">Horas Extras Diurnas</td>
@@ -252,7 +254,6 @@
                 </tr>
             `;
 
-            // Establecer estampa horaria
             const ahora = new Date();
             document.getElementById('fecha-reporte').innerText = ahora.toLocaleDateString('es-PY') + " " + ahora.toLocaleTimeString('es-PY', {hour: '2-digit', minute:'2-digit'});
         });

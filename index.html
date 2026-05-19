@@ -698,7 +698,6 @@ function renderData(data) {
     document.getElementById('ui-lista').innerHTML = listaHTML;
 }*/
 
-
 let reporteHoras = [];
 let mapeoFechas = {};
 let reporteAgrupadoPorFecha;
@@ -731,7 +730,8 @@ function renderData(data) {
         const banderaTurno = (reg.turno || 'mañana').toLowerCase();
         
         // Variables locales para acumular los minutos específicos de este registro
-        let normalDelRegistro = 0;
+        let normalDiurnoDelRegistro = 0;
+        let normalNocturnoDelRegistro = 0;
         let descansoDelRegistro = 0;
         let extraDiurnoDelRegistro = 0;
         let extraNocturnoDelRegistro = 0;
@@ -755,17 +755,16 @@ function renderData(data) {
             const LEGAL = { inicio: 360, fin: 1200 };
             const turno = TURNOS[banderaTurno] || TURNOS['mañana'];
 
-            // 1. CÁLCULO DE TIEMPOS BASE (Intersecciones matemáticas primarias)
+            // Tiempos base
             const minEnTurno = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
             const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
             const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
 
-            // 2. CLASIFICACIÓN SEGÚN EL TIPO DE DÍA
+            // Clasificación según tipo de día
             if (tipoDia === "JUEVES_LIBRE_EXTRA" || tipoDia.includes("FERIADO")) {
                 descansoDelRegistro = minEnTurno;
                 minDescansoTotales += minEnTurno;
 
-                // Segmentación de extras en Feriados/Libres en base al límite LEGAL
                 const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
                 const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
                 const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
@@ -778,33 +777,32 @@ function renderData(data) {
                 minExtraNocturnosTotales += extraNocturnoDelRegistro;
 
             } else {
-                // DÍA NORMAL: Se procesa el ciclo normal separando diurno y nocturno
-                const normalDiurno = Math.max(0, Math.min(fin, turno.fin, LEGAL.fin) - Math.max(inicio, turno.inicio, LEGAL.inicio));
-                const normalNocturno = Math.max(0, minEnTurno - normalDiurno);
+                // DÍA NORMAL: Separación estricta de diurno y nocturno dentro del ciclo normal
+                normalDiurnoDelRegistro = Math.max(0, Math.min(fin, turno.fin, LEGAL.fin) - Math.max(inicio, turno.inicio, LEGAL.inicio));
+                normalNocturnoDelRegistro = Math.max(0, minEnTurno - normalDiurnoDelRegistro);
 
-                // Horas extras del día normal en base al límite LEGAL
                 const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
                 const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
                 const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
                 const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
 
-                normalDelRegistro = normalDiurno + normalNocturno;
                 extraDiurnoDelRegistro = extraAntesDiurna + extraDespuesDiurna;
                 extraNocturnoDelRegistro = extraAntesNocturna + extraDespuesNocturna;
 
-                minNormalDiurnoTotales += normalDiurno;
-                minNormalNocturnoTotales += normalNocturno;
+                minNormalDiurnoTotales += normalDiurnoDelRegistro;
+                minNormalNocturnoTotales += normalNocturnoDelRegistro;
                 minExtraDiurnosTotales += extraDiurnoDelRegistro;
                 minExtraNocturnosTotales += extraNocturnoDelRegistro;
             }
         }
 
-        // Guardamos las métricas desglosadas en minutos en el primer array lineal
+        // Guardamos las métricas desglosadas por tipo de hora normal
         reporteHoras.push({
             fecha: reg.fecha,
             turno: reg.horaInicio && reg.horaCierre ? banderaTurno : "incompleto/descanso",
             horasTrabajadas: horasTrabajadasDia,
-            minNormal: normalDelRegistro,
+            minNormalDiurno: normalDiurnoDelRegistro,
+            minNormalNocturno: normalNocturnoDelRegistro,
             minExtraDiurno: extraDiurnoDelRegistro,
             minExtraNocturno: extraNocturnoDelRegistro,
             minDescanso: descansoDelRegistro,
@@ -836,7 +834,8 @@ function renderData(data) {
             mapeoFechas[item.fecha] = {
                 fecha: item.fecha,
                 intervalosRaw: [],
-                totalMinNormal: 0,
+                totalMinNormalDiurno: 0,
+                totalMinNormalNocturno: 0,
                 totalMinExtraDiurno: 0,
                 totalMinExtraNocturno: 0,
                 totalMinDescanso: 0
@@ -860,20 +859,20 @@ function renderData(data) {
             });
         }
         
-        mapeoFechas[item.fecha].totalMinNormal += item.minNormal;
+        mapeoFechas[item.fecha].totalMinNormalDiurno += item.minNormalDiurno;
+        mapeoFechas[item.fecha].totalMinNormalNocturno += item.minNormalNocturno;
         mapeoFechas[item.fecha].totalMinExtraDiurno += item.minExtraDiurno;
         mapeoFechas[item.fecha].totalMinExtraNocturno += item.minExtraNocturno;
         mapeoFechas[item.fecha].totalMinDescanso += item.minDescanso;
     });
 
-    // Procesamos el mapa para unificar los intervalos correlativos y armar el objeto final
     reporteAgrupadoPorFecha = Object.values(mapeoFechas).map(f => {
         let plazosUnificados = [];
         
         if (f.intervalosRaw.length > 0) {
             f.intervalosRaw.sort((a, b) => a.inicio - b.inicio);
             let actual = f.intervalosRaw[0];
-            const TOLERANCIA = 2; // minutos
+            const TOLERANCIA = 2;
 
             for (let i = 1; i < f.intervalosRaw.length; i++) {
                 let siguiente = f.intervalosRaw[i];
@@ -888,11 +887,12 @@ function renderData(data) {
             plazosUnificados.push(`${actual.textoInicio} a ${actual.textoFin}`);
         }
 
-        const totalMinutos = f.totalMinNormal + f.totalMinExtraDiurno + f.totalMinExtraNocturno + f.totalMinDescanso;
+        const totalMinutos = f.totalMinNormalDiurno + f.totalMinNormalNocturno + f.totalMinExtraDiurno + f.totalMinExtraNocturno + f.totalMinDescanso;
         return {
             Fecha: f.fecha,
             "Plazos Trabajados": plazosUnificados.join(" | ") || "Sin registrar",
-            "Horas Ciclo Normal": Number((f.totalMinNormal / 60).toFixed(2)),
+            "Horas Normales Diurnas": Number((f.totalMinNormalDiurno / 60).toFixed(2)),
+            "Horas Normales Nocturnas": Number((f.totalMinNormalNocturno / 60).toFixed(2)),
             "Horas Extras Diurnas": Number((f.totalMinExtraDiurno / 60).toFixed(2)),
             "Horas Extras Nocturnas": Number((f.totalMinExtraNocturno / 60).toFixed(2)),
             "Horas Descanso/Feriado": Number((f.totalMinDescanso / 60).toFixed(2)),
@@ -900,7 +900,6 @@ function renderData(data) {
         };
     });
 
-    // Impresión del reporte tabular en consola
     console.log("--- REPORTE AGRUPADO Y UNIFICADO POR FECHA ---");
     console.table(reporteAgrupadoPorFecha);
 
@@ -923,7 +922,6 @@ function renderData(data) {
     let extras = MextraDiurno + MextraNocturno + Mdescanso;
     let total = jornales + extras;
 
-    // Resumen de cálculos económicos detallados
     console.group("--- RESUMEN FINAL DE CÁLCULOS ---");
     console.table({
         "Normal Diurno": { Horas: HnormalDiurno.toFixed(2), Monto: MnormalDiurno.toFixed(0) },
@@ -935,13 +933,11 @@ function renderData(data) {
     console.log(`TOTAL ACUMULADO: Gs. ${Math.round(total).toLocaleString()}`);
     console.groupEnd();
 
-    // Renderizado final en los elementos de la interfaz
     document.getElementById('ui-acumulado').innerHTML = `${Math.round(total).toLocaleString('de-DE')} <span>GS.</span>`;
     document.getElementById('ui-jornales').innerText = `${Math.round(jornales).toLocaleString('de-DE')} Gs.`;
     document.getElementById('ui-extras').innerText = `${Math.round(extras).toLocaleString('de-DE')} Gs.`;
     document.getElementById('ui-lista').innerHTML = listaHTML;
 }
-
 
 function mostrarVentanaCobro(reporteAgrupado) {
     // Guardamos el array como texto string en el almacenamiento local
