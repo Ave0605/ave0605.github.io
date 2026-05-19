@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumen de Horas para Cobro</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #334155;
+            line-height: 1.5;
+            padding: 2rem 1rem;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .actions-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .actions-bar span { color: #94a3b8; font-size: 0.875rem; font-weight: 500; }
+        .btn-print {
+            background-color: #059669; color: white; border: none; padding: 0.5rem 1rem;
+            font-size: 0.875rem; font-weight: 600; border-radius: 0.5rem; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.2s;
+        }
+        .btn-print:hover { background-color: #047857; }
+        .report-card { background-color: white; border-radius: 1rem; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); }
+        .report-header {
+            background: linear-gradient(135deg, #1e293b, #0f172a); color: white;
+            padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center;
+        }
+        .report-header h1 { font-size: 1.5rem; font-weight: 700; }
+        .report-header p { color: #94a3b8; font-size: 0.875rem; margin-top: 0.25rem; }
+        .status-tag {
+            font-size: 0.75rem; font-weight: 600; color: #34d399;
+            background-color: rgba(52, 211, 153, 0.1); padding: 0.25rem 0.75rem; border-radius: 9999px;
+        }
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        th {
+            background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;
+            font-weight: 700; text-transform: uppercase; font-size: 0.75rem; padding: 1rem 1.5rem;
+        }
+        td { padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; }
+        tr:hover td { background-color: #f8fafc; }
+        tr.row-vacia td { background-color: rgba(248, 250, 252, 0.5); color: #94a3b8; }
+        .text-right { text-align: right; }
+        .font-mono { font-family: monospace; }
+        .font-bold { font-weight: 700; }
+        .text-amber { color: #d97706; }
+        .text-emerald { color: #059669; }
+        .badge { display: inline-flex; padding: 0.25rem 0.625rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; }
+        .badge-azul { background-color: #eff6ff; color: #1d4ed8; }
+        .badge-gris { background-color: #f1f5f9; color: #64748b; }
+        .report-footer { background-color: #f8fafc; border-top: 1px solid #f1f5f9; padding: 1.5rem; font-size: 0.75rem; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .report-card { box-shadow: none !important; border: 1px solid #e2e8f0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <div class="actions-bar no-print">
+            <span>Previsualización del Reporte</span>
+            <button onclick="window.print()" class="btn-print">🖨️ Imprimir Reporte</button>
+        </div>
+
+        <div class="report-card">
+            <div class="report-header">
+                <div>
+                    <h1>Desglose Unificado de Jornadas</h1>
+                    <p>Reporte matemático estructurado por fechas y plazos correlativos</p>
+                </div>
+                <div><span class="status-tag">Listo para Liquidación</span></div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 120px; text-align: left;">Fecha</th>
+                            <th style="text-align: left;">Intervalos Continuos</th>
+                            <th class="text-right" style="width: 140px;">Ciclo Normal (h)</th>
+                            <th class="text-right" style="width: 120px;">Extras (h)</th>
+                            <th class="text-right" style="width: 140px;">Feriados/Desc. (h)</th>
+                            <th class="text-right" style="width: 120px; background-color: #f1f5f9;">Total Día (h)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuerpo">
+                        <!-- Las filas se inyectan aquí -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="report-footer">
+                <div>Generado automáticamente por el Sistema de Gestión</div>
+                <div class="font-mono" id="fecha-reporte"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // JS PURO: Leer los datos al cargar la página
+        document.addEventListener("DOMContentLoaded", () => {
+            const rawData = localStorage.getItem('reporteCobroData');
+            
+            if (!rawData) {
+                document.getElementById('tabla-cuerpo').innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">No se encontraron datos para procesar.</td></tr>`;
+                return;
+            }
+
+            const reporteAgrupado = JSON.parse(rawData);
+            let filasHTML = '';
+
+            reporteAgrupado.forEach(row => {
+                const tieneHoras = row["Total Horas del Día"] > 0;
+                const claseFila = tieneHoras ? "" : "row-vacia";
+
+                filasHTML += `
+                    <tr class="${claseFila}">
+                        <td style="font-weight: 500; color: #0f172a;">${row.Fecha}</td>
+                        <td>
+                            <span class="badge ${tieneHoras ? 'badge-azul' : 'badge-gris'}">
+                                ${row["Plazos Trabajados"]}
+                            </span>
+                        </td>
+                        <td class="text-right font-mono">${row["Horas Ciclo Normal"] > 0 ? row["Horas Ciclo Normal"].toFixed(2) : '-'}</td>
+                        <td class="text-right font-mono text-amber">${row["Horas Extras"] > 0 ? row["Horas Extras"].toFixed(2) : '-'}</td>
+                        <td class="text-right font-mono text-emerald">${row["Horas Descanso/Feriado"] > 0 ? row["Horas Descanso/Feriado"].toFixed(2) : '-'}</td>
+                        <td class="text-right font-mono font-bold" style="color: #0f172a; background-color: rgba(241, 245, 249, 0.4);">${row["Total Horas del Día"] > 0 ? row["Total Horas del Día"].toFixed(2) : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            // Inyectar filas en la tabla
+            document.getElementById('tabla-cuerpo').innerHTML = filasHTML;
+
+            // Poner la estampa de tiempo actual
+            const ahora = new Date();
+            document.getElementById('fecha-reporte').innerText = ahora.toLocaleDateString('es-PY') + " " + ahora.toLocaleTimeString('es-PY', {hour: '2-digit', minute:'2-digit'});
+
+            // Opcional: Limpiar el localStorage para no dejar basura en el navegador
+            localStorage.removeItem('reporteCobroData');
+        });
+    </script>
+</body>
+</html>
