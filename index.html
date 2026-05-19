@@ -722,7 +722,7 @@ function renderData(data) {
     // Array 1: Desglose individual lineal por cada registro
     
 
-    data.registros.forEach((reg, index) => {
+  data.registros.forEach((reg, index) => {
         let horasTrabajadasDia = 0;
         const banderaTurno = (reg.turno || 'mañana').toLowerCase();
         
@@ -742,36 +742,56 @@ function renderData(data) {
             horasTrabajadasDia = Number((tiempoTotal / 60).toFixed(2));
             const tipoDia = (reg.tipo_dia || "").trim().toUpperCase();
 
-           if (tipoDia === "JUEVES_LIBRE_EXTRA" || tipoDia.includes("FERIADO")) {
-                minDescansoTotales += tiempoTotal;
-                descansoDelRegistro = tiempoTotal;
-            } else {
-                const TURNOS = {
-                    'mañana': { inicio: 330, fin: 780 },
-                    'tarde':  { inicio: 780, fin: 1230 }
-                };
-                const LEGAL = { inicio: 360, fin: 1200 };
+            // Configuración de Turnos y Límites Legales
+            const TURNOS = {
+                'mañana': { inicio: 330, fin: 780 },
+                'tarde':  { inicio: 780, fin: 1230 }
+            };
+            const LEGAL = { inicio: 360, fin: 1200 };
+            const turno = TURNOS[banderaTurno];
 
-                const turno = TURNOS[banderaTurno];
+            // 1. CÁLCULO DE TIEMPOS BASE (Intersecciones matemáticas primarias)
+            // Lo que cae dentro del rango del turno teórico
+            const minEnTurno = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
+            
+            // Lo que cae fuera del turno teórico (Extras antes y después)
+            const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
+            const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
 
-                // --- HORAS NORMALES ---
-                const minNormales = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
-                const normalDiurno = Math.max(0, Math.min(fin, turno.fin, LEGAL.fin) - Math.max(inicio, turno.inicio, LEGAL.inicio));
-                const normalNocturno = Math.max(0, minNormales - normalDiurno);
+            // 2. CLASIFICACIÓN SEGÚN EL TIPO DE DÍA
+            if (tipoDia === "JUEVES_LIBRE_EXTRA" || tipoDia.includes("FERIADO")) {
+                // El turno teórico se paga como Descanso/Feriado
+                descansoDelRegistro = minEnTurno;
+                minDescansoTotales += minEnTurno;
 
-                // --- HORAS EXTRAS ---
-                const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
-                const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
+                // El excedente del turno (las extras) se calcula y suma como horas extras normales
+                extraDelRegistro = extraAntes + extraDespues;
+
+                // Para los acumuladores globales monetarios, dividimos esas extras de feriado en Diurnas/Nocturnas según el límite LEGAL
                 const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
                 const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
                 const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
                 const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
 
-                // Asignación local para el desglose del día
+                minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
+                minExtraNocturnosTotales += (extraAntesNocturna + extraDespuesNocturna);
+
+            } else {
+                // DÍA NORMAL: Se procesa el ciclo normal separando diurno y nocturno
+                const normalDiurno = Math.max(0, Math.min(fin, turno.fin, LEGAL.fin) - Math.max(inicio, turno.inicio, LEGAL.inicio));
+                const normalNocturno = Math.max(0, minEnTurno - normalDiurno);
+
+                // Horas extras del día normal en base al límite LEGAL
+                const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
+                const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
+                const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
+                const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesNocturna);
+
+                // Asignaciones locales
                 normalDelRegistro = normalDiurno + normalNocturno;
                 extraDelRegistro = extraAntes + extraDespues;
 
-                // Acumuladores globales
+                // Acumuladores globales monetarios
                 minNormalDiurnoTotales += normalDiurno;
                 minNormalNocturnoTotales += normalNocturno;
                 minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
