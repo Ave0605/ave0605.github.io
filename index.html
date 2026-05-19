@@ -396,7 +396,7 @@
             </a>
             <a href="#" class="nav-item">
                 <span>📊</span>
-                <span>Historial</span>
+                <span>Cobrar</span>
             </a>
             <a href="#" class="nav-item">
                 <span>⚙️</span>
@@ -409,7 +409,7 @@
     // PEGA AQUÍ LA URL QUE TE DIO GOOGLE AL IMPLEMENTAR
     let nombrePlayero = "";
   
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbysdj6tA5SqCI-RSWUuIUMGwYsZRj03pg3VtBZZTMkXfIHvwwM6Z8l50SGVw9e1O8O7/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx2EcS0XjdZ3FVzVb0HT5j7j5_YS9gp4j1p2wRpfTtkdt_jOKOHsNErDzATeT5RpqGo/exec";
 const urlConParametros = `${WEB_APP_URL}?nombre=${encodeURIComponent(nombrePlayero)}`;
 window.onload = function() {
     // El loader se queda oculto hasta que se inicie sesión
@@ -604,9 +604,8 @@ function renderData(data) {
             console.log(`Rango: ${reg.horaInicio} - ${reg.horaCierre} (${tiempoTotal} min)`);
             console.log(`Tipo Día: ${tipoDia}`);
 
-            if (tipoDia === "JUEVES_LIBRE_EXTRA") {
+           if (tipoDia === "JUEVES_LIBRE_EXTRA" || tipoDia.includes("FERIADO")) {
                 minDescansoTotales += tiempoTotal;
-                console.log("Acción: Sumado a Descanso Total");
             } else {
                 const TURNOS = {
                     'mañana': { inicio: 330, fin: 780 },
