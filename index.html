@@ -394,7 +394,7 @@
                 <span>🏠</span>
                 <span>Inicio</span>
             </a>
-            <a href="#" class="nav-item">
+            <a onclick="mostrarVentanaCobro(mapeoFechas)" class="nav-item">
                 <span>📊</span>
                 <span>Cobrar</span>
             </a>
@@ -947,6 +947,18 @@ function renderData(data) {
     document.getElementById('ui-jornales').innerText = `${Math.round(jornales).toLocaleString('de-DE')} Gs.`;
     document.getElementById('ui-extras').innerText = `${Math.round(extras).toLocaleString('de-DE')} Gs.`;
     document.getElementById('ui-lista').innerHTML = listaHTML;
+}
+
+function mostrarVentanaCobro(reporteAgrupado) {
+    // Guardamos el array como texto string en el almacenamiento local
+    localStorage.setItem('reporteCobroData', JSON.stringify(reporteAgrupado));
+    
+    // Abrimos la nueva página HTML independiente
+    const nuevaVentana = window.open('cobrar.html', '_blank');
+    
+    if (!nuevaVentana) {
+        alert("Por favor, permite los pop-ups para poder ver el reporte de cobro.");
+    }
 }
 </script>
 </body>
