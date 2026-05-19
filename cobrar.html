@@ -92,7 +92,6 @@
                 <div><span class="status-tag">Listo para Liquidación</span></div>
             </div>
 
-            <!-- TABLA 1: Desglose diario de horas -->
             <div class="table-container">
                 <table class="tabla-diaria">
                     <thead>
@@ -107,12 +106,10 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-cuerpo">
-                        <!-- Las filas diarias se inyectan aquí -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
 
-            <!-- TABLA 2: Liquidación monetaria (Precios y Totales) -->
             <div class="seccion-tabla2">
                 <h2>Cálculo de Importes para Liquidación</h2>
                 <div class="table-container">
@@ -126,8 +123,7 @@
                             </tr>
                         </thead>
                         <tbody id="tabla-totales-cuerpo">
-                            <!-- Los cálculos de cobro se inyectan aquí -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
@@ -143,7 +139,6 @@
         document.addEventListener("DOMContentLoaded", () => {
             // ==========================================
             // CONFIGURACIÓN DE PRECIOS POR HORA
-            // (Ajusta estos valores según tus necesidades)
             // ==========================================
             const PRECIOS_HORA = {
                 normal: 15000,        
@@ -174,14 +169,14 @@
                 const tieneHoras = row["Total Horas del Día"] > 0;
                 const claseFila = tieneHoras ? "" : "row-vacia";
 
-                // Conversión limpia a números (por si vienen nulos o strings vacíos del backend)
+                // Mapeo seguro y numérico de los campos del objeto de datos
                 const hNormal = Number(row["Horas Ciclo Normal"] || 0);
                 const hExDiurna = Number(row["Horas Extras"] || 0); 
                 const hExNocturna = Number(row["Horas Extras Nocturnas"] || 0); 
                 const hFeriado = Number(row["Horas Descanso/Feriado"] || 0);
                 const totalDia = Number(row["Total Horas del Día"] || 0);
 
-                // Acumulamos los globales
+                // Acumulamos las sumas globales
                 sumaNormales += hNormal;
                 sumaExtrasDiurnas += hExDiurna;
                 sumaExtrasNocturnas += hExNocturna;
@@ -208,7 +203,7 @@
             document.getElementById('tabla-cuerpo').innerHTML = filasDiariasHTML;
 
             // ==========================================
-            // 2. CÁLCULO MÁTEMÁTICO Y RENDERIZADO DE TABLA 2
+            // 2. CÁLCULO MATEMÁTICO Y RENDERIZADO DE TABLA 2
             // ==========================================
             const impNormal = sumaNormales * PRECIOS_HORA.normal;
             const impExDiurna = sumaExtrasDiurnas * PRECIOS_HORA.extraDiurna;
@@ -218,10 +213,10 @@
             const granTotalMonetario = impNormal + impExDiurna + impExNocturna + impFeriado;
             const granTotalHoras = sumaNormales + sumaExtrasDiurnas + sumaExtrasNocturnas + sumaFeriados;
 
-            // Formateador monetario (Usa punto de miles por defecto para Guaraníes)
+            // Formateador monetario adaptado a estándares locales
             const formatoGs = new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', minimumFractionDigits: 0 });
 
-            // Inyectar cálculos en la Tabla 2
+            // Inyectar cálculos e importes multiplicados en la Tabla 2 junto a la fila totalizadora
             document.getElementById('tabla-totales-cuerpo').innerHTML = `
                 <tr>
                     <td>Horas Ciclo Normal</td>
@@ -255,11 +250,11 @@
                 </tr>
             `;
 
-            // Establecer fecha y hora del reporte
+            // Establecer estampa horaria
             const ahora = new Date();
             document.getElementById('fecha-reporte').innerText = ahora.toLocaleDateString('es-PY') + " " + ahora.toLocaleTimeString('es-PY', {hour: '2-digit', minute:'2-digit'});
 
-            // Limpieza del localStorage
+            // Limpieza preventiva de la sesión local
             localStorage.removeItem('reporteCobroData');
         });
     </script>
