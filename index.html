@@ -570,7 +570,7 @@ let totalMinNocturnos = 0;
         document.getElementById('ui-lista').innerHTML = listaHTML;
     }*/
 
-
+/*
 function renderData(data) {
     console.log("--- INICIO RENDER DATA ---");
     console.log("Data recibida:", data);
@@ -680,6 +680,194 @@ function renderData(data) {
     let total = jornales + extras;
 
     // Resumen final en una tabla bonita
+    console.group("--- RESUMEN FINAL DE CÁLCULOS ---");
+    console.table({
+        "Normal Diurno": { Horas: HnormalDiurno.toFixed(2), Monto: MnormalDiurno.toFixed(0) },
+        "Normal Nocturno": { Horas: HnormalNocturno.toFixed(2), Monto: MnormalNocturno.toFixed(0) },
+        "Extra Diurna": { Horas: HextraDiurno.toFixed(2), Monto: MextraDiurno.toFixed(0) },
+        "Extra Nocturna": { Horas: HextraNocturno.toFixed(2), Monto: MextraNocturno.toFixed(0) },
+        "Descanso": { Horas: Hdescanso.toFixed(2), Monto: Mdescanso.toFixed(0) }
+    });
+    console.log(`TOTAL ACUMULADO: Gs. ${Math.round(total).toLocaleString()}`);
+    console.groupEnd();
+
+    // Renderizado en UI
+    document.getElementById('ui-acumulado').innerHTML = `${Math.round(total).toLocaleString('de-DE')} <span>GS.</span>`;
+    document.getElementById('ui-jornales').innerText = `${Math.round(jornales).toLocaleString('de-DE')} Gs.`;
+    document.getElementById('ui-extras').innerText = `${Math.round(extras).toLocaleString('de-DE')} Gs.`;
+    document.getElementById('ui-lista').innerHTML = listaHTML;
+}*/
+
+
+let reporteHoras = [];
+let mapeoFechas = {};
+
+function renderData(data) {
+    console.log("--- INICIO RENDER DATA ---");
+    console.log("Data recibida:", data);
+
+    let progresoVisual = data.progreso;
+    if (typeof diaSemana !== 'undefined' && diaSemana === 4) { progresoVisual = 6; }
+
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('ui-nombre').innerText = data.nombre;
+
+    let minNormalDiurnoTotales = 0;
+    let minNormalNocturnoTotales = 0;
+    let minExtraDiurnosTotales = 0;
+    let minExtraNocturnosTotales = 0;
+    let minDescansoTotales = 0;
+    let listaHTML = '';
+
+    // Array 1: Desglose individual lineal por cada registro
+    
+
+    data.registros.forEach((reg, index) => {
+        let horasTrabajadasDia = 0;
+        const banderaTurno = (reg.turno || 'mañana').toLowerCase();
+        
+        // Variables locales para acumular los minutos específicos de este registro
+        let normalDelRegistro = 0;
+        let extraDelRegistro = 0;
+        let descansoDelRegistro = 0;
+        
+        if (reg.horaInicio && reg.horaCierre) {
+            const [h1, m1] = reg.horaInicio.split(':').map(Number);
+            const [h2, m2] = reg.horaCierre.split(':').map(Number);
+            let inicio = h1 * 60 + m1;
+            let fin = h2 * 60 + m2;
+            if (fin < inicio) fin += 1440;
+
+            const tiempoTotal = fin - inicio;
+            horasTrabajadasDia = Number((tiempoTotal / 60).toFixed(2));
+            const tipoDia = (reg.tipo_dia || "").trim().toUpperCase();
+
+           if (tipoDia === "JUEVES_LIBRE_EXTRA" || tipoDia.includes("FERIADO")) {
+                minDescansoTotales += tiempoTotal;
+                descansoDelRegistro = tiempoTotal;
+            } else {
+                const TURNOS = {
+                    'mañana': { inicio: 330, fin: 780 },
+                    'tarde':  { inicio: 780, fin: 1230 }
+                };
+                const LEGAL = { inicio: 360, fin: 1200 };
+
+                const turno = TURNOS[banderaTurno];
+
+                // --- HORAS NORMALES ---
+                const minNormales = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
+                const normalDiurno = Math.max(0, Math.min(fin, turno.fin, LEGAL.fin) - Math.max(inicio, turno.inicio, LEGAL.inicio));
+                const normalNocturno = Math.max(0, minNormales - normalDiurno);
+
+                // --- HORAS EXTRAS ---
+                const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
+                const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
+                const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
+                const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
+                const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
+                const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
+
+                // Asignación local para el desglose del día
+                normalDelRegistro = normalDiurno + normalNocturno;
+                extraDelRegistro = extraAntes + extraDespues;
+
+                // Acumuladores globales
+                minNormalDiurnoTotales += normalDiurno;
+                minNormalNocturnoTotales += normalNocturno;
+                minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
+                minExtraNocturnosTotales += (extraAntesNocturna + extraDespuesNocturna);
+            }
+        }
+
+        // Guardamos las métricas detalladas en minutos en el primer array
+        reporteHoras.push({
+            fecha: reg.fecha,
+            turno: reg.horaInicio && reg.horaCierre ? banderaTurno : "incompleto/descanso",
+            horasTrabajadas: horasTrabajadasDia,
+            minNormal: normalDelRegistro,
+            minExtra: extraDelRegistro,
+            minDescanso: descansoDelRegistro,
+            rango: reg.horaInicio && reg.horaCierre ? `${reg.horaInicio} a ${reg.horaCierre}` : "N/A"
+        });
+
+        // Renderizado de lista
+        const esDescanso = reg.estado.toLowerCase().includes('descanso');
+        listaHTML += `
+            <div class="record-item">
+                <div class="record-icon">${esDescanso ? '😴' : '✅'}</div>
+                <div class="record-info">
+                    <div class="record-date">${reg.fecha}</div>
+                    <div class="record-sub">${reg.estado} - ${reg.horaInicio} a ${reg.horaCierre}</div>
+                </div>
+                <div class="record-monto" style="color: ${esDescanso ? '#94a3b8' : '#10b981'}">
+                    ${reg.valor || 0} pts
+                </div>
+            </div>`;
+    });
+
+    // ==========================================
+    // NUEVO: CREACIÓN DEL SEGUNDO ARRAY AGRUPADO
+    // ==========================================
+    
+
+    reporteHoras.forEach(item => {
+        if (!mapeoFechas[item.fecha]) {
+            mapeoFechas[item.fecha] = {
+                fecha: item.fecha,
+                plazos: [],
+                totalMinNormal: 0,
+                totalMinExtra: 0,
+                totalMinDescanso: 0
+            };
+        }
+        
+        // Si el registro tiene un horario válido, lo sumamos al listado de plazos
+        if (item.rango !== "N/A") {
+            mapeoFechas[item.fecha].plazos.push(item.rango);
+        }
+        
+        // Sumamos los minutos de cada categoría
+        mapeoFechas[item.fecha].totalMinNormal += item.minNormal;
+        mapeoFechas[item.fecha].totalMinExtra += item.minExtra;
+        mapeoFechas[item.fecha].totalMinDescanso += item.minDescanso;
+    });
+
+    // Transformamos el mapa en un array plano y convertimos los minutos finales a formato de horas decimales
+    let reporteAgrupadoPorFecha = Object.values(mapeoFechas).map(f => {
+        const totalMinutos = f.totalMinNormal + f.totalMinExtra + f.totalMinDescanso;
+        return {
+            Fecha: f.fecha,
+            "Plazos Trabajados": f.plazos.join(" | ") || "Sin registrar",
+            "Horas Ciclo Normal": Number((f.totalMinNormal / 60).toFixed(2)),
+            "Horas Extras": Number((f.totalMinExtra / 60).toFixed(2)),
+            "Horas Descanso/Feriado": Number((f.totalMinDescanso / 60).toFixed(2)),
+            "Total Horas del Día": Number((totalMinutos / 60).toFixed(2))
+        };
+    });
+
+    // Impresión del segundo array en la consola
+    console.log("--- REPORTE AGRUPADO Y SUMADO POR FECHA ---");
+    console.table(reporteAgrupadoPorFecha);
+    // ==========================================
+
+    // --- CONVERSIÓN Y TOTALES ECONÓMICOS ---
+    let HnormalDiurno = minNormalDiurnoTotales / 60;
+    let HnormalNocturno = minNormalNocturnoTotales / 60;
+    let HextraDiurno = minExtraDiurnosTotales / 60;
+    let HextraNocturno = minExtraNocturnosTotales / 60;
+    let Hdescanso = minDescansoTotales / 60;
+
+    let MnormalDiurno = HnormalDiurno * 12683;
+    let MnormalNocturno = HnormalNocturno * 16487;
+    let MextraDiurno = HextraDiurno * 19024;
+    let MextraNocturno = HextraNocturno * 25366; 
+    let Mdescanso = Hdescanso * 25366;
+
+    let jornales = MnormalDiurno + MnormalNocturno;
+    let extras = MextraDiurno + MextraNocturno + Mdescanso;
+    let total = jornales + extras;
+
+    // Resumen de cálculos económicos
     console.group("--- RESUMEN FINAL DE CÁLCULOS ---");
     console.table({
         "Normal Diurno": { Horas: HnormalDiurno.toFixed(2), Monto: MnormalDiurno.toFixed(0) },
