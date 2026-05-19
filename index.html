@@ -701,7 +701,7 @@ function renderData(data) {
 
 let reporteHoras = [];
 let mapeoFechas = {};
-let reporteAgrupadoPorFecha ;
+let reporteAgrupadoPorFecha;
 
 function renderData(data) {
     console.log("--- INICIO RENDER DATA ---");
@@ -720,17 +720,21 @@ function renderData(data) {
     let minDescansoTotales = 0;
     let listaHTML = '';
 
-    // Array 1: Desglose individual lineal por cada registro
-    
+    // Limpiamos referencias previas antes de procesar
+    reporteHoras = [];
 
-  data.registros.forEach((reg, index) => {
+    // ==========================================
+    // 1. PROCESAMIENTO DE REGISTROS INDIVIDUALES
+    // ==========================================
+    data.registros.forEach((reg, index) => {
         let horasTrabajadasDia = 0;
         const banderaTurno = (reg.turno || 'mañana').toLowerCase();
         
         // Variables locales para acumular los minutos específicos de este registro
         let normalDelRegistro = 0;
-        let extraDelRegistro = 0;
         let descansoDelRegistro = 0;
+        let extraDiurnoDelRegistro = 0;
+        let extraNocturnoDelRegistro = 0;
         
         if (reg.horaInicio && reg.horaCierre) {
             const [h1, m1] = reg.horaInicio.split(':').map(Number);
@@ -749,33 +753,29 @@ function renderData(data) {
                 'tarde':  { inicio: 780, fin: 1230 }
             };
             const LEGAL = { inicio: 360, fin: 1200 };
-            const turno = TURNOS[banderaTurno];
+            const turno = TURNOS[banderaTurno] || TURNOS['mañana'];
 
             // 1. CÁLCULO DE TIEMPOS BASE (Intersecciones matemáticas primarias)
-            // Lo que cae dentro del rango del turno teórico
             const minEnTurno = Math.max(0, Math.min(fin, turno.fin) - Math.max(inicio, turno.inicio));
-            
-            // Lo que cae fuera del turno teórico (Extras antes y después)
             const extraAntes = Math.max(0, Math.min(fin, turno.inicio) - inicio);
             const extraDespues = Math.max(0, fin - Math.max(inicio, turno.fin));
 
             // 2. CLASIFICACIÓN SEGÚN EL TIPO DE DÍA
             if (tipoDia === "JUEVES_LIBRE_EXTRA" || tipoDia.includes("FERIADO")) {
-                // El turno teórico se paga como Descanso/Feriado
                 descansoDelRegistro = minEnTurno;
                 minDescansoTotales += minEnTurno;
 
-                // El excedente del turno (las extras) se calcula y suma como horas extras normales
-                extraDelRegistro = extraAntes + extraDespues;
-
-                // Para los acumuladores globales monetarios, dividimos esas extras de feriado en Diurnas/Nocturnas según el límite LEGAL
+                // Segmentación de extras en Feriados/Libres en base al límite LEGAL
                 const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
                 const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
                 const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
                 const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
 
-                minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
-                minExtraNocturnosTotales += (extraAntesNocturna + extraDespuesNocturna);
+                extraDiurnoDelRegistro = extraAntesDiurna + extraDespuesDiurna;
+                extraNocturnoDelRegistro = extraAntesNocturna + extraDespuesNocturna;
+
+                minExtraDiurnosTotales += extraDiurnoDelRegistro;
+                minExtraNocturnosTotales += extraNocturnoDelRegistro;
 
             } else {
                 // DÍA NORMAL: Se procesa el ciclo normal separando diurno y nocturno
@@ -788,37 +788,37 @@ function renderData(data) {
                 const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
                 const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
 
-                // Asignaciones locales
                 normalDelRegistro = normalDiurno + normalNocturno;
-                extraDelRegistro = extraAntes + extraDespues;
+                extraDiurnoDelRegistro = extraAntesDiurna + extraDespuesDiurna;
+                extraNocturnoDelRegistro = extraAntesNocturna + extraDespuesNocturna;
 
-                // Acumuladores globales monetarios
                 minNormalDiurnoTotales += normalDiurno;
                 minNormalNocturnoTotales += normalNocturno;
-                minExtraDiurnosTotales += (extraAntesDiurna + extraDespuesDiurna);
-                minExtraNocturnosTotales += (extraAntesNocturna + extraDespuesNocturna);
+                minExtraDiurnosTotales += extraDiurnoDelRegistro;
+                minExtraNocturnosTotales += extraNocturnoDelRegistro;
             }
         }
 
-        // Guardamos las métricas detalladas en minutos en el primer array
+        // Guardamos las métricas desglosadas en minutos en el primer array lineal
         reporteHoras.push({
             fecha: reg.fecha,
             turno: reg.horaInicio && reg.horaCierre ? banderaTurno : "incompleto/descanso",
             horasTrabajadas: horasTrabajadasDia,
             minNormal: normalDelRegistro,
-            minExtra: extraDelRegistro,
+            minExtraDiurno: extraDiurnoDelRegistro,
+            minExtraNocturno: extraNocturnoDelRegistro,
             minDescanso: descansoDelRegistro,
             rango: reg.horaInicio && reg.horaCierre ? `${reg.horaInicio} a ${reg.horaCierre}` : "N/A"
         });
 
-        // Renderizado de lista
-        const esDescanso = reg.estado.toLowerCase().includes('descanso');
+        // Renderizado de lista lateral
+        const esDescanso = reg.estado && reg.estado.toLowerCase().includes('descanso');
         listaHTML += `
             <div class="record-item">
                 <div class="record-icon">${esDescanso ? '😴' : '✅'}</div>
                 <div class="record-info">
                     <div class="record-date">${reg.fecha}</div>
-                    <div class="record-sub">${reg.estado} - ${reg.horaInicio} a ${reg.horaCierre}</div>
+                    <div class="record-sub">${reg.estado} - ${reg.horaInicio || '--:--'} a ${reg.horaCierre || '--:--'}</div>
                 </div>
                 <div class="record-monto" style="color: ${esDescanso ? '#94a3b8' : '#10b981'}">
                     ${reg.valor || 0} pts
@@ -827,22 +827,22 @@ function renderData(data) {
     });
 
     // ==========================================
-    // NUEVO: CREACIÓN DEL SEGUNDO ARRAY AGRUPADO (CON UNIFICACIÓN DE CORRELATIVOS)
+    // 2. CREACIÓN DEL SEGUNDO ARRAY AGRUPADO (CON UNIFICACIÓN DE CORRELATIVOS)
     // ==========================================
-    let mapeoFechas = {};
+    mapeoFechas = {};
 
     reporteHoras.forEach(item => {
         if (!mapeoFechas[item.fecha]) {
             mapeoFechas[item.fecha] = {
                 fecha: item.fecha,
-                intervalosRaw: [], // Guardaremos los tiempos nativos para ordenarlos y unificarlos
+                intervalosRaw: [],
                 totalMinNormal: 0,
-                totalMinExtra: 0,
+                totalMinExtraDiurno: 0,
+                totalMinExtraNocturno: 0,
                 totalMinDescanso: 0
             };
         }
         
-        // Si tiene horario válido, extraemos las marcas en minutos absolutos desde las 00:00
         if (item.rango !== "N/A") {
             const [inicioStr, finStr] = item.rango.split(" a ");
             const [h1, m1, s1] = inicioStr.split(':').map(Number);
@@ -850,71 +850,63 @@ function renderData(data) {
             
             let inicioMin = h1 * 60 + m1 + (s1 || 0) / 60;
             let finMin = h2 * 60 + m2 + (s2 || 0) / 60;
-            
-            // Control de cambio de día matemático
             if (finMin < inicioMin) finMin += 1440;
             
             mapeoFechas[item.fecha].intervalosRaw.push({ 
                 inicio: inicioMin, 
                 fin: finMin, 
-                textoInicio: inicioStr.substring(0, 5), // Guardamos formato HH:MM limpio
+                textoInicio: inicioStr.substring(0, 5), 
                 textoFin: finStr.substring(0, 5) 
             });
         }
         
-        // Sumamos los acumuladores numéricos
         mapeoFechas[item.fecha].totalMinNormal += item.minNormal;
-        mapeoFechas[item.fecha].totalMinExtra += item.minExtra;
+        mapeoFechas[item.fecha].totalMinExtraDiurno += item.minExtraDiurno;
+        mapeoFechas[item.fecha].totalMinExtraNocturno += item.minExtraNocturno;
         mapeoFechas[item.fecha].totalMinDescanso += item.minDescanso;
     });
 
-    // Procesamos el mapa para unificar los intervalos correlativos
-     reporteAgrupadoPorFecha = Object.values(mapeoFechas).map(f => {
+    // Procesamos el mapa para unificar los intervalos correlativos y armar el objeto final
+    reporteAgrupadoPorFecha = Object.values(mapeoFechas).map(f => {
         let plazosUnificados = [];
         
         if (f.intervalosRaw.length > 0) {
-            // 1. Ordenar los intervalos cronológicamente por su hora de inicio
             f.intervalosRaw.sort((a, b) => a.inicio - b.inicio);
-            
-            // 2. Algoritmo de unificación (Merge) con tolerancia de 2 minutos (120 segundos)
             let actual = f.intervalosRaw[0];
             const TOLERANCIA = 2; // minutos
 
             for (let i = 1; i < f.intervalosRaw.length; i++) {
                 let siguiente = f.intervalosRaw[i];
-                
-                // Si el siguiente inicia antes de que termine el actual (o dentro del rango de tolerancia)
                 if (siguiente.inicio <= (actual.fin + TOLERANCIA)) {
-                    // Se unifican: el actual se extiende si el siguiente termina más tarde
                     actual.fin = Math.max(actual.fin, siguiente.fin);
                     actual.textoFin = siguiente.textoFin;
                 } else {
-                    // No es correlativo: guardamos el tramo actual y saltamos al siguiente
                     plazosUnificados.push(`${actual.textoInicio} a ${actual.textoFin}`);
                     actual = siguiente;
                 }
             }
-            // No olvidar meter el último tramo procesado
             plazosUnificados.push(`${actual.textoInicio} a ${actual.textoFin}`);
         }
 
-        const totalMinutos = f.totalMinNormal + f.totalMinExtra + f.totalMinDescanso;
+        const totalMinutos = f.totalMinNormal + f.totalMinExtraDiurno + f.totalMinExtraNocturno + f.totalMinDescanso;
         return {
             Fecha: f.fecha,
             "Plazos Trabajados": plazosUnificados.join(" | ") || "Sin registrar",
             "Horas Ciclo Normal": Number((f.totalMinNormal / 60).toFixed(2)),
-            "Horas Extras": Number((f.totalMinExtra / 60).toFixed(2)),
+            "Horas Extras Diurnas": Number((f.totalMinExtraDiurno / 60).toFixed(2)),
+            "Horas Extras Nocturnas": Number((f.totalMinExtraNocturno / 60).toFixed(2)),
             "Horas Descanso/Feriado": Number((f.totalMinDescanso / 60).toFixed(2)),
             "Total Horas del Día": Number((totalMinutos / 60).toFixed(2))
         };
     });
 
-    // Impresión del segundo array optimizado en la consola
+    // Impresión del reporte tabular en consola
     console.log("--- REPORTE AGRUPADO Y UNIFICADO POR FECHA ---");
     console.table(reporteAgrupadoPorFecha);
-    // ==========================================
 
-    // --- CONVERSIÓN Y TOTALES ECONÓMICOS ---
+    // ==========================================
+    // 3. CONVERSIÓN Y TOTALES ECONÓMICOS
+    // ==========================================
     let HnormalDiurno = minNormalDiurnoTotales / 60;
     let HnormalNocturno = minNormalNocturnoTotales / 60;
     let HextraDiurno = minExtraDiurnosTotales / 60;
@@ -931,7 +923,7 @@ function renderData(data) {
     let extras = MextraDiurno + MextraNocturno + Mdescanso;
     let total = jornales + extras;
 
-    // Resumen de cálculos económicos
+    // Resumen de cálculos económicos detallados
     console.group("--- RESUMEN FINAL DE CÁLCULOS ---");
     console.table({
         "Normal Diurno": { Horas: HnormalDiurno.toFixed(2), Monto: MnormalDiurno.toFixed(0) },
@@ -943,12 +935,13 @@ function renderData(data) {
     console.log(`TOTAL ACUMULADO: Gs. ${Math.round(total).toLocaleString()}`);
     console.groupEnd();
 
-    // Renderizado en UI
+    // Renderizado final en los elementos de la interfaz
     document.getElementById('ui-acumulado').innerHTML = `${Math.round(total).toLocaleString('de-DE')} <span>GS.</span>`;
     document.getElementById('ui-jornales').innerText = `${Math.round(jornales).toLocaleString('de-DE')} Gs.`;
     document.getElementById('ui-extras').innerText = `${Math.round(extras).toLocaleString('de-DE')} Gs.`;
     document.getElementById('ui-lista').innerHTML = listaHTML;
 }
+
 
 function mostrarVentanaCobro(reporteAgrupado) {
     // Guardamos el array como texto string en el almacenamiento local
