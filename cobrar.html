@@ -106,7 +106,7 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-cuerpo">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
 
@@ -123,7 +123,7 @@
                             </tr>
                         </thead>
                         <tbody id="tabla-totales-cuerpo">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -163,7 +163,9 @@
             let sumaExtrasDiurnas = 0;
             let sumaExtrasNocturnas = 0;
             let sumaFeriados = 0;
-console.log(reporteAgrupado)
+
+            console.log("Datos Cargados Correctamente en Reporte:", reporteAgrupado);
+
             // 1. PROCESAMIENTO Y RENDERIZADO DE TABLA 1 (Diaria)
             reporteAgrupado.forEach(row => {
                 const tieneHoras = row["Total Horas del Día"] > 0;
@@ -253,9 +255,6 @@ console.log(reporteAgrupado)
             // Establecer estampa horaria
             const ahora = new Date();
             document.getElementById('fecha-reporte').innerText = ahora.toLocaleDateString('es-PY') + " " + ahora.toLocaleTimeString('es-PY', {hour: '2-digit', minute:'2-digit'});
-
-            // Limpieza preventiva de la sesión local
-            localStorage.removeItem('reporteCobroData');
         });
     </script>
 </body>
