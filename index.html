@@ -785,7 +785,7 @@ function renderData(data) {
                 const extraAntesDiurna = Math.max(0, Math.min(fin, turno.inicio, LEGAL.fin) - Math.max(inicio, LEGAL.inicio));
                 const extraAntesNocturna = Math.max(0, extraAntes - extraAntesDiurna);
                 const extraDespuesDiurna = Math.max(0, Math.min(fin, LEGAL.fin) - Math.max(inicio, turno.fin, LEGAL.inicio));
-                const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesNocturna);
+                const extraDespuesNocturna = Math.max(0, extraDespues - extraDespuesDiurna);
 
                 // Asignaciones locales
                 normalDelRegistro = normalDiurno + normalNocturno;
