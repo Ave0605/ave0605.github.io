@@ -36,12 +36,12 @@
         }
         
         /* ==========================================
-           CONTROL DE RESPONSIVIDAD PARA TABLAS GRANDES
+           CONTROL DE RESPONSIVIDAD PARA AMBAS TABLAS
            ========================================== */
         .table-container { 
             width: 100%; 
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+            -webkit-overflow-scrolling: touch; /* Scroll fluido en dispositivos móviles táctiles */
         }
         
         /* Evita que las columnas colapsen y deformen los números en móviles */
@@ -49,8 +49,9 @@
             min-width: 800px; 
         }
         
+        /* Mantiene un ancho mínimo cómodo para conceptos, horas y montos en Gs. */
         .tabla-cobro {
-            min-width: 550px;
+            min-width: 580px;
         }
 
         .seccion-tabla2 { border-top: 2px solid #e2e8f0; background-color: #f8fafc; padding-top: 1.5rem; }
@@ -94,9 +95,12 @@
             body { padding: 1rem 0.5rem; }
             .report-header { padding: 1.25rem 1rem; flex-direction: column; align-items: start; gap: 0.75rem; }
             .actions-bar { padding: 0 0.5rem; }
-            th, td { padding: 0.75rem 0.8rem; }
             
-            /* Intercambio de textos largos por cortos en el header de la tabla */
+            /* Reducimos la fuente y el padding para optimizar la visualización en pantallas compactas */
+            table { font-size: 0.8rem; }
+            th, td { padding: 0.75rem 0.6rem; }
+            
+            /* Intercambio de encabezados largos de la tabla diaria */
             .txt-desktop { display: none; }
             .txt-movil { display: inline; }
         }
@@ -105,7 +109,7 @@
             .no-print { display: none !important; }
             body { background: white; padding: 0; }
             .report-card { box-shadow: none !important; border: 1px solid #e2e8f0; }
-            .tabla-diaria, .tabla-cobro { min-width: 100% !important; } /* En la hoja impresa no queremos scroll */
+            .tabla-diaria, .tabla-cobro { min-width: 100% !important; } /* Evita scrolls al imprimir en papel o guardar en PDF */
         }
     </style>
 </head>
@@ -171,6 +175,7 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            // Configuración exacta de costos unitarios basados en el salario legal paraguayo
             const PRECIOS_HORA = {
                 normalDiurna: 12683,
                 normalNocturna: 16487,
@@ -190,12 +195,14 @@
             const reporteAgrupado = JSON.parse(rawData);
             let filasDiariasHTML = '';
 
+            // Acumuladores globales para cálculos consolidados de la Tabla 2
             let sumaNormalesDiurnas = 0;
             let sumaNormalesNocturnas = 0;
             let sumaExtrasDiurnas = 0;
             let sumaExtrasNocturnas = 0;
             let sumaFeriados = 0;
 
+            // 1. Inyección de registros de la tabla diaria
             reporteAgrupado.forEach(row => {
                 const tieneHoras = row["Total Horas del Día"] > 0;
                 const claseFila = tieneHoras ? "" : "row-vacia";
@@ -233,6 +240,7 @@
 
             document.getElementById('tabla-cuerpo').innerHTML = filasDiariasHTML;
 
+            // 2. Cálculos financieros consolidados
             const impNormDiurna = sumaNormalesDiurnas * PRECIOS_HORA.normalDiurna;
             const impNormNocturna = sumaNormalesNocturnas * PRECIOS_HORA.normalNocturna;
             const impExDiurna = sumaExtrasDiurnas * PRECIOS_HORA.extraDiurna;
@@ -242,6 +250,7 @@
             const granTotalMonetario = impNormDiurna + impNormNocturna + impExDiurna + impExNocturna + impFeriado;
             const granTotalHoras = sumaNormalesDiurnas + sumaNormalesNocturnas + sumaExtrasDiurnas + sumaExtrasNocturnas + sumaFeriados;
 
+            // Formateador local ajustado a la moneda de Paraguay (Gs.) sin decimales flotantes
             const formatoGs = new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', minimumFractionDigits: 0 });
 
             document.getElementById('tabla-totales-cuerpo').innerHTML = `
@@ -283,6 +292,7 @@
                 </tr>
             `;
 
+            // Marca temporal del reporte para el pie de página
             const ahora = new Date();
             document.getElementById('fecha-reporte').innerText = ahora.toLocaleDateString('es-PY') + " " + ahora.toLocaleTimeString('es-PY', {hour: '2-digit', minute:'2-digit'});
         });
