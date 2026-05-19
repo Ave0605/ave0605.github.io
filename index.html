@@ -701,6 +701,7 @@ function renderData(data) {
 
 let reporteHoras = [];
 let mapeoFechas = {};
+let reporteAgrupadoPorFecha ;
 
 function renderData(data) {
     console.log("--- INICIO RENDER DATA ---");
@@ -868,7 +869,7 @@ function renderData(data) {
     });
 
     // Procesamos el mapa para unificar los intervalos correlativos
-    let reporteAgrupadoPorFecha = Object.values(mapeoFechas).map(f => {
+     reporteAgrupadoPorFecha = Object.values(mapeoFechas).map(f => {
         let plazosUnificados = [];
         
         if (f.intervalosRaw.length > 0) {
