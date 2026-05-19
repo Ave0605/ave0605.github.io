@@ -806,38 +806,81 @@ function renderData(data) {
     });
 
     // ==========================================
-    // NUEVO: CREACIÓN DEL SEGUNDO ARRAY AGRUPADO
+    // NUEVO: CREACIÓN DEL SEGUNDO ARRAY AGRUPADO (CON UNIFICACIÓN DE CORRELATIVOS)
     // ==========================================
-    
+    let mapeoFechas = {};
 
     reporteHoras.forEach(item => {
         if (!mapeoFechas[item.fecha]) {
             mapeoFechas[item.fecha] = {
                 fecha: item.fecha,
-                plazos: [],
+                intervalosRaw: [], // Guardaremos los tiempos nativos para ordenarlos y unificarlos
                 totalMinNormal: 0,
                 totalMinExtra: 0,
                 totalMinDescanso: 0
             };
         }
         
-        // Si el registro tiene un horario válido, lo sumamos al listado de plazos
+        // Si tiene horario válido, extraemos las marcas en minutos absolutos desde las 00:00
         if (item.rango !== "N/A") {
-            mapeoFechas[item.fecha].plazos.push(item.rango);
+            const [inicioStr, finStr] = item.rango.split(" a ");
+            const [h1, m1, s1] = inicioStr.split(':').map(Number);
+            const [h2, m2, s2] = finStr.split(':').map(Number);
+            
+            let inicioMin = h1 * 60 + m1 + (s1 || 0) / 60;
+            let finMin = h2 * 60 + m2 + (s2 || 0) / 60;
+            
+            // Control de cambio de día matemático
+            if (finMin < inicioMin) finMin += 1440;
+            
+            mapeoFechas[item.fecha].intervalosRaw.push({ 
+                inicio: inicioMin, 
+                fin: finMin, 
+                textoInicio: inicioStr.substring(0, 5), // Guardamos formato HH:MM limpio
+                textoFin: finStr.substring(0, 5) 
+            });
         }
         
-        // Sumamos los minutos de cada categoría
+        // Sumamos los acumuladores numéricos
         mapeoFechas[item.fecha].totalMinNormal += item.minNormal;
         mapeoFechas[item.fecha].totalMinExtra += item.minExtra;
         mapeoFechas[item.fecha].totalMinDescanso += item.minDescanso;
     });
 
-    // Transformamos el mapa en un array plano y convertimos los minutos finales a formato de horas decimales
+    // Procesamos el mapa para unificar los intervalos correlativos
     let reporteAgrupadoPorFecha = Object.values(mapeoFechas).map(f => {
+        let plazosUnificados = [];
+        
+        if (f.intervalosRaw.length > 0) {
+            // 1. Ordenar los intervalos cronológicamente por su hora de inicio
+            f.intervalosRaw.sort((a, b) => a.inicio - b.inicio);
+            
+            // 2. Algoritmo de unificación (Merge) con tolerancia de 2 minutos (120 segundos)
+            let actual = f.intervalosRaw[0];
+            const TOLERANCIA = 2; // minutos
+
+            for (let i = 1; i < f.intervalosRaw.length; i++) {
+                let siguiente = f.intervalosRaw[i];
+                
+                // Si el siguiente inicia antes de que termine el actual (o dentro del rango de tolerancia)
+                if (siguiente.inicio <= (actual.fin + TOLERANCIA)) {
+                    // Se unifican: el actual se extiende si el siguiente termina más tarde
+                    actual.fin = Math.max(actual.fin, siguiente.fin);
+                    actual.textoFin = siguiente.textoFin;
+                } else {
+                    // No es correlativo: guardamos el tramo actual y saltamos al siguiente
+                    plazosUnificados.push(`${actual.textoInicio} a ${actual.textoFin}`);
+                    actual = siguiente;
+                }
+            }
+            // No olvidar meter el último tramo procesado
+            plazosUnificados.push(`${actual.textoInicio} a ${actual.textoFin}`);
+        }
+
         const totalMinutos = f.totalMinNormal + f.totalMinExtra + f.totalMinDescanso;
         return {
             Fecha: f.fecha,
-            "Plazos Trabajados": f.plazos.join(" | ") || "Sin registrar",
+            "Plazos Trabajados": plazosUnificados.join(" | ") || "Sin registrar",
             "Horas Ciclo Normal": Number((f.totalMinNormal / 60).toFixed(2)),
             "Horas Extras": Number((f.totalMinExtra / 60).toFixed(2)),
             "Horas Descanso/Feriado": Number((f.totalMinDescanso / 60).toFixed(2)),
@@ -845,8 +888,8 @@ function renderData(data) {
         };
     });
 
-    // Impresión del segundo array en la consola
-    console.log("--- REPORTE AGRUPADO Y SUMADO POR FECHA ---");
+    // Impresión del segundo array optimizado en la consola
+    console.log("--- REPORTE AGRUPADO Y UNIFICADO POR FECHA ---");
     console.table(reporteAgrupadoPorFecha);
     // ==========================================
 
